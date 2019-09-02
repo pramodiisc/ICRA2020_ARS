@@ -146,7 +146,7 @@ class Stoch2Env(gym.Env):
         self._pybullet_client.setGravity(0, 0, -9.8)
         
         #Change this to suit your path
-        model_path = os.path.realpath('../..')+'/pybRL/envs/stoch_two_urdf/urdf/stoch_two_urdf.urdf'
+        model_path = os.path.realpath('../..')+'/pybRL/envs/stoch_two_abduction_urdf/urdf/stoch_two_abduction_urdf.urdf'
         self.stoch2 = self._pybullet_client.loadURDF(model_path, INIT_POSITION)
         
         self._joint_name_to_id, self._motor_id_list, self._motor_id_list_obs_space = self.BuildMotorIdList()
@@ -154,8 +154,8 @@ class Stoch2Env(gym.Env):
         num_legs = 4
         for i in range(num_legs):
             self.ResetLeg(i, add_constraint=True)
-
-        self.ResetSpine()
+        self.ResetPoseForAbd()
+        # self.ResetSpine() #Spine joints are fixed
     
         if self._on_rack:
             self._pybullet_client.createConstraint(
@@ -175,7 +175,8 @@ class Stoch2Env(gym.Env):
         for i in range(num_legs):
             self.ResetLeg(i, add_constraint=False)
 
-        self.ResetSpine()
+        self.ResetPoseForAbd()
+        # self.ResetSpine() #Spine joints are fixed
         self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
         self._n_steps = 0
               
@@ -432,16 +433,25 @@ class Stoch2Env(gym.Env):
         for i in range(num_joints):
             joint_info = self._pybullet_client.getJointInfo(self.stoch2, i)
             joint_name_to_id[joint_info[1].decode("UTF-8")] = joint_info[0]
-        
-        MOTOR_NAMES = [ "motor_fl_upper_hip_joint",
-                        "motor_fl_upper_knee_joint", 
-                        "motor_fr_upper_hip_joint",
-                        "motor_fr_upper_knee_joint", 
-                        "motor_bl_upper_hip_joint",
-                        "motor_bl_upper_knee_joint", 
-                        "motor_br_upper_hip_joint", 
-                        "motor_br_upper_knee_joint"]
-        
+
+        #with  abduction
+        MOTOR_NAMES = [
+            "motor_fl_upper_knee_joint", "motor_fl_upper_hip_joint",
+            "motor_bl_upper_knee_joint", "motor_bl_upper_hip_joint",
+            "motor_fr_upper_knee_joint", "motor_fr_upper_hip_joint",
+            "motor_br_upper_knee_joint", "motor_br_upper_hip_joint",
+            "motor_front_left_abd_joint", "motor_front_right_abd_joint",
+            "motor_back_left_abd_joint", "motor_back_right_abd_joint"]
+
+        # MOTOR_NAMES = [ "motor_fl_upper_hip_joint",
+        #                 "motor_fl_upper_knee_joint",
+        #                 "motor_fr_upper_hip_joint",
+        #                 "motor_fr_upper_knee_joint",
+        #                 "motor_bl_upper_hip_joint",
+        #                 "motor_bl_upper_knee_joint",
+        #                 "motor_br_upper_hip_joint",
+        #                 "motor_br_upper_knee_joint"]
+
         #   WITHOUT SPINE
         # MOTOR_NAMES = [ "motor_fl_upper_hip_joint",
         #                 "motor_fl_upper_knee_joint", 
@@ -517,7 +527,50 @@ class Stoch2Env(gym.Env):
                               controlMode=self._pybullet_client.VELOCITY_CONTROL,
                               targetVelocity=0,
                               force=0)
-    
+    def ResetPoseForAbd(self):
+        half_pi = 0.0
+        knee_angle = 0.0
+
+        self._pybullet_client.resetJointState(
+            self.stoch2,
+            self._joint_name_to_id["motor_front_left_abd_joint"],  # motor
+            targetValue=0, targetVelocity=0)
+        self._pybullet_client.resetJointState(
+            self.stoch2,
+            self._joint_name_to_id["motor_front_right_abd_joint"],  # motor
+            targetValue=0, targetVelocity=0)
+        self._pybullet_client.resetJointState(
+            self.stoch2,
+            self._joint_name_to_id["motor_back_left_abd_joint"],  # motor
+            targetValue=0, targetVelocity=0)
+        self._pybullet_client.resetJointState(
+            self.stoch2,
+            self._joint_name_to_id["motor_back_right_abd_joint"],  # motor
+            targetValue=0, targetVelocity=0)
+
+        # Disable the default motor in pybullet.
+        self._pybullet_client.setJointMotorControl2(
+            bodyIndex=self.stoch2,
+            jointIndex=(self._joint_name_to_id["motor_front_left_abd_joint"]),
+            controlMode=self._pybullet_client.VELOCITY_CONTROL,
+            targetVelocity=0)
+        self._pybullet_client.setJointMotorControl2(
+            bodyIndex=self.stoch2,
+            jointIndex=(self._joint_name_to_id["motor_front_right_abd_joint"]),
+            controlMode=self._pybullet_client.VELOCITY_CONTROL,
+            targetVelocity=0)
+        self._pybullet_client.setJointMotorControl2(
+            bodyIndex=self.stoch2,
+            jointIndex=(self._joint_name_to_id["motor_back_left_abd_joint"]),
+            controlMode=self._pybullet_client.VELOCITY_CONTROL,
+            targetVelocity=0)
+        self._pybullet_client.setJointMotorControl2(
+            bodyIndex=self.stoch2,
+            jointIndex=(self._joint_name_to_id["motor_back_right_abd_joint"]),
+            controlMode=self._pybullet_client.VELOCITY_CONTROL,
+            targetVelocity=0)
+
+
     def ResetSpine(self):
         self._pybullet_client.resetJointState(
                   self.stoch2,
