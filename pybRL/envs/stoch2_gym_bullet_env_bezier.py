@@ -436,10 +436,10 @@ class Stoch2Env(gym.Env):
 
         #with  abduction
         MOTOR_NAMES = [
-            "motor_fl_upper_knee_joint", "motor_fl_upper_hip_joint",
-            "motor_bl_upper_knee_joint", "motor_bl_upper_hip_joint",
-            "motor_fr_upper_knee_joint", "motor_fr_upper_hip_joint",
-            "motor_br_upper_knee_joint", "motor_br_upper_hip_joint",
+            "motor_fl_upper_hip_joint","motor_fl_upper_knee_joint",
+            "motor_fr_upper_hip_joint", "motor_fr_upper_knee_joint",
+            "motor_bl_upper_hip_joint","motor_bl_upper_knee_joint",
+            "motor_br_upper_hip_joint","motor_br_upper_knee_joint",
             "motor_front_left_abd_joint", "motor_front_right_abd_joint",
             "motor_back_left_abd_joint", "motor_back_right_abd_joint"]
 
