@@ -346,6 +346,7 @@ class WalkingController():
         legs.back_right.motor_hip, legs.back_right.motor_knee, legs.back_left.motor_hip, legs.back_left.motor_knee]
 
         return np.zeros(2),leg_motor_angles, np.zeros(2), np.zeros(8) 
+
     def _Bezier_polynomial(self,tau,nTraj):
         Phi = np.zeros(4*nTraj)
         for i in range(nTraj):
@@ -414,6 +415,7 @@ class WalkingController():
         action_spine[[0,3]] = self._action_spine_ref[[0,3]] + action[self._action_spine_indices]
         action_spine[[4,7]] = self._action_spine_ref[[4,7]] - action[self._action_spine_indices]
         return action_spine
+
     def _transform_action_to_joint_angle_via_bezier_polynomials(self, tau, stance_leg, action):
 
         joint_ang = np.zeros(4)

@@ -1,0 +1,8 @@
+learning_rate: 0.2
+noise: 0.03
+env_name: MinitaurTrottingEnv-v0episode_length: 10
+direction ratio: 2.0
+Normal initialization: 1
+Gait: trot
+Spline polynomial degree: 20
+
