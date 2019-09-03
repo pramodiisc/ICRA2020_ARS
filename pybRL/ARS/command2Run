@@ -1,0 +1,2 @@
+python ars_multi.py --lr 0.1 --noise 0.03 --logdir 3Sept1 --gait trot --normal 0 --env Stoch2-v0 --stairs 0 --action_dim 18 --msg "just pitch roll and rate" --episode_length 10
+

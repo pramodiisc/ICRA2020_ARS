@@ -29,7 +29,7 @@ class Stoch2Env(gym.Env):
                  on_rack = False,
                  gait = 'trot',
                  phase = [0,PI,PI,0],
-                 action_dim = 10,
+                 action_dim = 18,
                  stairs = True):
         
         self._is_stairs = stairs
@@ -215,7 +215,8 @@ class Stoch2Env(gym.Env):
             
             # spine_des, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd = self._walkcon.transform_action_to_motor_joint_command(theta,action)
             # spine_des, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd = self._walkcon.transform_action_to_motor_joint_command2(theta,action) 
-            spine_des, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.transform_action_to_motor_joint_command3(theta,action)   
+            spine_des, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.transform_action_to_motor_joint_command3(theta,action)
+
             self._theta = (omega * self.dt + theta)
             # self._theta = theta + 2*PI/100
             
@@ -233,8 +234,8 @@ class Stoch2Env(gym.Env):
             # m_vel_cmd_ext[[1,2,3,4,6,7,8,9]] = leg_m_vel_cmd
             # m_vel_cmd_ext[[0,5]] = d_spine_des
 
-            m_angle_cmd_ext = np.array(leg_m_angle_cmd)
-            m_vel_cmd_ext = np.zeros(8)
+            m_angle_cmd_ext = np.array(leg_m_angle_cmd + [0]*4)   #for now putting abduction angles Zero
+            m_vel_cmd_ext = np.zeros(12)        #for now putting abduction angles Zero
 
             for _ in range(n_frames):
                 current_angle_data = np.concatenate(([ii],self.GetMotorAngles()))
@@ -379,7 +380,11 @@ class Stoch2Env(gym.Env):
     
     def GetObservation(self):
         pos, ori = self.GetBasePosAndOrientation()
-        return np.concatenate([ori]).ravel()
+        ori = self._pybullet_client.getEulerFromQuaternion(ori)
+        ang_vel = self.GetBaseAngularVelocity()
+        ori = ori[0:2]                      #for now not considering yaw
+        ang_vel = ang_vel[0:2]              #for now not considering yaw rate
+        return np.concatenate(([ori],[ang_vel])).ravel()
 
     
     def GetObservationReset(self):
@@ -390,7 +395,11 @@ class Stoch2Env(gym.Env):
         Robot starts in the same position, only it's readings have some error. 
         """
         pos, ori = self.GetBasePosAndOrientation()
-        return np.concatenate([ori]).ravel()
+        ori = self._pybullet_client.getEulerFromQuaternion(ori)
+        ang_vel = self.GetBaseAngularVelocity()
+        ori = ori[0:2]
+        ang_vel = ang_vel[0:2]
+        return np.concatenate(([ori], [ang_vel])).ravel()
 
 
 
@@ -412,7 +421,13 @@ class Stoch2Env(gym.Env):
     
     def GetBasePosAndOrientation(self):
         position, orientation = (self._pybullet_client.getBasePositionAndOrientation(self.stoch2))
+        # orientation = self._pybullet_client.getEulerFromQuaternion(orientation)
         return position, orientation
+
+    def GetBaseAngularVelocity(self):
+        basevelocity= self._pybullet_client.getBaseVelocity(self.stoch2)
+        return basevelocity[1] #world AngularVelocity vec3, list of 3 floats
+
 
     def GetDesiredMotorAngles(self):
         _, leg_m_angle_cmd, _, _ = self._walkcon.transform_action_to_motor_joint_command(self._theta,self.action)
@@ -463,7 +478,7 @@ class Stoch2Env(gym.Env):
         #                 "motor_br_upper_knee_joint",]
         # Even smaller workspace
         
-        MOTOR_NAMES2 = [ "motor_fl_upper_hip_joint",
+        MOTOR_NAMES2 = ["motor_fl_upper_hip_joint",
                         "motor_fl_upper_knee_joint",  
                         "motor_bl_upper_hip_joint",
                         "motor_bl_upper_knee_joint"]
@@ -553,22 +568,27 @@ class Stoch2Env(gym.Env):
             bodyIndex=self.stoch2,
             jointIndex=(self._joint_name_to_id["motor_front_left_abd_joint"]),
             controlMode=self._pybullet_client.VELOCITY_CONTROL,
+            force = 10,
             targetVelocity=0)
         self._pybullet_client.setJointMotorControl2(
             bodyIndex=self.stoch2,
             jointIndex=(self._joint_name_to_id["motor_front_right_abd_joint"]),
             controlMode=self._pybullet_client.VELOCITY_CONTROL,
+            force=10,
             targetVelocity=0)
         self._pybullet_client.setJointMotorControl2(
             bodyIndex=self.stoch2,
             jointIndex=(self._joint_name_to_id["motor_back_left_abd_joint"]),
             controlMode=self._pybullet_client.VELOCITY_CONTROL,
+            force=10,
             targetVelocity=0)
         self._pybullet_client.setJointMotorControl2(
             bodyIndex=self.stoch2,
             jointIndex=(self._joint_name_to_id["motor_back_right_abd_joint"]),
             controlMode=self._pybullet_client.VELOCITY_CONTROL,
+            force=10,
             targetVelocity=0)
+
 
 
     def ResetSpine(self):
@@ -623,10 +643,13 @@ class Stoch2Env(gym.Env):
 
 
 if(__name__ == "__main__"):
-    env = Stoch2Env(render=True, stairs = True)
-    for i in range(20):
+    env = Stoch2Env(render=True, stairs = False)
+    for i in range(100000):
+        # pybullet.stepSimulation()
         # env.step(np.array([0,0,0,0,0,0,0,0,0,0]))
         env.step(np.zeros(18))
+        print(env.GetObservation())
+
 #         env.step(np.array( [ 0.06778296, -0.01940124, -0.01924977, -0.00751148, -0.03500922,  0.01891797,
 #  -0.02483966, -0.01901164, -0.01536581,  0.01925358]))
         #Normalize action space between -0.024 to +0.024
