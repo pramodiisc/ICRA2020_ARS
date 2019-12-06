@@ -67,7 +67,6 @@ class WalkingController():
     def __init__(self,
                  gait_type='trot',
                  leg = [0.12,0.15015,0.04,0.15501,0.11187,0.04,0.2532,2.803],
-                 spine_enable = False,
                  frequency=2,
                  planning_space = 'joint_space',
                  left_to_right_switch = float('nan'),

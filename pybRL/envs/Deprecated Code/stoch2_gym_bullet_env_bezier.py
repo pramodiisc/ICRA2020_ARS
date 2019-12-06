@@ -137,8 +137,10 @@ class Stoch2Env(gym.Env):
         action = np.clip(action, -1, 1)
         energy_spent_per_step, cost_reference, ang_data = self.do_simulation(action, n_frames = self._frame_skip, callback=callback)
         ob = self.GetObservation()
-        reward = self._get_reward(action,energy_spent_per_step,cost_reference) 
-        return ob, reward,False, ang_data
+        reward,done,penalty = self._get_reward(action,energy_spent_per_step,cost_reference) 
+        if done:
+            self.reset()
+        return ob, reward, done, ang_data
 
     def do_simulation(self, action, n_frames, callback=None):
         omega = 2 * math.pi * self._frequency
@@ -224,9 +226,61 @@ class Stoch2Env(gym.Env):
 
     def _get_reward(self,action,energy_spent_per_step,cost_reference):
         current_base_position, current_base_orientation = self.GetBasePosAndOrientation()
+
+        rpy = self._pybullet_client.getEulerFromQuaternion(current_base_orientation)
+       # print(rpy)
+        roll_penalty = np.abs(rpy[0])
+        yaw_penalty = np.abs(rpy[1])
+        pitch_penalty = np.abs(rpy[2])
         distance_travelled = current_base_position[0] - self._last_base_position[0] # added negative reward for staying still
-        reward = distance_travelled
-        return reward
+        # distance_travelled = np.clip(forward_reward, -0.1, 0.1)
+
+#         walking_velocity_reward = 10 * np.exp(-10*(0.6 - xvel)**2)
+        walking_height_reward = 0.5 * np.exp(-10*(0.23 - current_base_position[2])**2)
+        #print("Current base position" + str(current_base_position[2]))
+        #print("Walking height" + str(walking_height_reward))
+
+        done, penalty = self._termination(current_base_position, current_base_orientation)
+#         if forward_reward >= 0:
+#             reward = (distance_travelled - 0.01 * energy_spent_per_step - penalty + 0.01 * walking_height_reward - 0.0*(pitch_penalty)) 
+#         else:
+#             reward = forward_reward
+#         print('forward reward',forward_reward)
+#         print('energy per step', energy_spent_per_step)
+#         print('reward',reward)
+        
+#         rt_start = self._walkcon.transform_action_to_rt(0, action)
+#         rt_mid = self._walkcon.transform_action_to_rt(math.pi/2, action)
+#         print(rt_start,rt_mid)
+        
+#         foot_clearance_reward = 0.5 * np.exp(-10*(0.04 - (rt_mid[0] - rt_mid[2]))**2)
+#         stride_length_reward = 0.1 * np.exp(-10*(0.25 - (rt_start[1] - rt_start[3]))**2)
+        # distance_travelled = np.array(current_base_position) - np.array(self._xpos_previous)
+        self._xpos_previous = current_base_position[0]
+        penalty = penalty + roll_penalty + yaw_penalty +pitch_penalty
+#         walking_velocity_reward = 10 * np.exp(-10*(0.6 - xvel)**2)
+#         walking_height_reward = 2 * np.exp(-2*(0.22 - zpos)**2)
+        costreference_reward = 10 * np.exp(-2*(0 - cost_reference)**2)
+#         print('height',zpos)
+#         print(walking_height_reward)
+        
+#         rt_start, _ = self._walkcon.transform_action_to_rt(0, action)
+#         rt_mid, _ = self._walkcon.transform_action_to_rt(math.pi/2, action)
+#         print('r and theta start',rt_start,'r and theta mid',rt_mid)
+        
+#         foot_clearance_reward = 0.5 * np.exp(-10*(0.05 - (rt_mid[0] - rt_mid[2]))**2)
+#         foot_clearance_reward = 0.5 * np.exp(-2*(0.23 - rt_mid[0])**2) + 0.5 * np.exp(-2*(0.18 - rt_mid[2])**2)
+#         stride_length_reward = 0.5 * np.exp(-10*(1.0 - (rt_start[1] - rt_start[3]))**2) + 0.1 * np.exp(-10*(0.0 - (rt_mid[1] - rt_mid[3]))**2)
+        
+        # reward = distance_travelled - penalty - 0.01 * energy_spent_per_step + 0.5 * costreference_reward #+ walking_height_reward + foot_clearance_reward + stride_length_reward# + walking_velocity_reward
+        # print('reward being returned in function: ', reward)
+        #REMOVED PENALTIES TO LEARN OTHER GAITS
+        if self._is_stairs:
+            reward = distance_travelled - 0.01 * energy_spent_per_step + walking_height_reward #+ foot_clearance_reward + stride_length_reward# + walking_velocity_reward
+        else:
+            reward = distance_travelled - 0.01 * energy_spent_per_step #+ walking_height_reward + foot_clearance_reward + stride_length_reward# + walking_velocity_reward
+        return reward, done, penalty
+
     def _apply_pd_control(self, motor_commands, motor_vel_commands):
         qpos_act = self.GetMotorAngles()
         qvel_act = self.GetMotorVelocities()
@@ -236,9 +290,12 @@ class Stoch2Env(gym.Env):
             self.SetMotorTorqueById(motor_id, motor_torque)
 
         return applied_motor_torque
+    
     def GetObservation(self):
         pos, ori = self.GetBasePosAndOrientation()
         return np.concatenate([ori]).ravel()
+
+    
     def GetObservationReset(self):
         """
         Resets the robot and returns the base position and Orientation with a random error
@@ -248,18 +305,25 @@ class Stoch2Env(gym.Env):
         """
         pos, ori = self.GetBasePosAndOrientation()
         return np.concatenate([ori]).ravel()
+
+
+
     def GetMotorAngles(self):
         motor_ang = [self._pybullet_client.getJointState(self.stoch2, motor_id)[0] for motor_id in self._motor_id_list]
         return motor_ang
+    
     def GetMotorAnglesObs(self):
         motor_ang = [self._pybullet_client.getJointState(self.stoch2, motor_id)[0] for motor_id in self._motor_id_list_obs_space]
         return motor_ang
+
     def GetMotorVelocities(self):
         motor_vel = [self._pybullet_client.getJointState(self.stoch2, motor_id)[1] for motor_id in self._motor_id_list]
         return motor_vel
+
     def GetMotorTorques(self):
         motor_torq = [self._pybullet_client.getJointState(self.stoch2, motor_id)[3] for motor_id in self._motor_id_list]
-        return motor_torq 
+        return motor_torq
+    
     def GetBasePosAndOrientation(self):
         position, orientation = (self._pybullet_client.getBasePositionAndOrientation(self.stoch2))
         return position, orientation
@@ -276,6 +340,7 @@ class Stoch2Env(gym.Env):
                   jointIndex=motor_id,
                   controlMode=self._pybullet_client.TORQUE_CONTROL,
                   force=torque)
+
     def BuildMotorIdList(self):
         num_joints = self._pybullet_client.getNumJoints(self.stoch2)
         joint_name_to_id = {}
@@ -310,7 +375,8 @@ class Stoch2Env(gym.Env):
         motor_id_list = [joint_name_to_id[motor_name] for motor_name in MOTOR_NAMES]
         motor_id_list_obs_space = [joint_name_to_id[motor_name] for motor_name in MOTOR_NAMES2]
 
-        return joint_name_to_id, motor_id_list, motor_id_list_obs_space 
+        return joint_name_to_id, motor_id_list, motor_id_list_obs_space
+    
     def ResetLeg(self, leg_id, add_constraint):
         leg_position = LEG_POSITION[leg_id]
         self._pybullet_client.resetJointState(
@@ -378,6 +444,9 @@ class Stoch2Env(gym.Env):
                   controlMode=self._pybullet_client.VELOCITY_CONTROL,
                   targetVelocity=0)
 
+    def CostReferenceGait(self,theta,q):
+        return 0
+    
     def GetXYTrajectory(self,action):
         rt = np.zeros((4,100))
         rtvel = np.zeros((4,100))
@@ -404,4 +473,10 @@ class Stoch2Env(gym.Env):
 if(__name__ == "__main__"):
     env = Stoch2Env(render=True, stairs = True)
     for i in range(20):
+        # env.step(np.array([0,0,0,0,0,0,0,0,0,0]))
         env.step(np.zeros(18))
+#         env.step(np.array( [ 0.06778296, -0.01940124, -0.01924977, -0.00751148, -0.03500922,  0.01891797,
+#  -0.02483966, -0.01901164, -0.01536581,  0.01925358]))
+        #Normalize action space between -0.024 to +0.024
+#         env.step(np.array([ 0.04409455,  0.01223679, -0.04060704, -0.01334077, -0.02117415,  0.01420131,
+#   0.02825101, -0.02903829,  0.02508816, -0.00322808]))
