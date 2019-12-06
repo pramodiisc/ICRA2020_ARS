@@ -541,10 +541,7 @@ class Stoch2Env(gym.Env):
                   targetVelocity=0)
 
     def CostReferenceGait(self,theta,q):
-        i = int(theta/2/math.pi*100)
-        xy = self._walkcon.forwardkinematics(q)
-        ls_error = (xy[0] - self.FRx[i])**2 + (xy[1] - self.FRy[i])**2 + (xy[2] - self.FLx[i])**2 + (xy[3] - self.FLy[i])**2
-        return ls_error
+        return 0
     
     def GetXYTrajectory(self,action):
         rt = np.zeros((4,100))
