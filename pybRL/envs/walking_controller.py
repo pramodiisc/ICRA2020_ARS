@@ -35,6 +35,33 @@ class robot_data:
     front_left : leg_data = leg_data()
     back_right : leg_data = leg_data()
     back_left : leg_data = leg_data()
+
+#Utility Functions
+def convert_action_to_polar_coordinates(action):
+    """
+    Takes action, does the required conversion to change it into polar coordinates
+    """
+    #Spline reference action is a circle with 0.02 radius centered at 0, -0.17
+    #Normalize action varying from -1 to 1 to -0.024 to 0.024
+    # action = action * 0.024
+    if(action.size == 10):
+        mul_ref = np.array([0.08233419, 0.07341638, 0.04249794, 0.04249729, 0.07341638, 0.08183298,0.07368498, 0.04149645, 0.04159619, 0.07313576])
+    elif(action.size == 18):
+        mul_ref = np.array([0.08733419, 0.07801237, 0.07310331, 0.05280192, 0.04580373, 0.04580335, 0.05280085, 0.07310168, 0.07801237, 0.08683298, 0.11530908, 0.07157067, 0.05135627, 0.0447909,  0.04467491, 0.05151569, 0.0710504,  0.11530908])
+    elif(action.size == 20):
+        mul_ref = np.array([0.08733419, 0.07832142, 0.07841638, 0.05661231, 0.04749794, 0.045, 0.04749729, 0.05661107, 0.07841638, 0.07832142, 0.08683298, 0.1112868, 0.07868498, 0.05570797, 0.04649645, 0.04400026, 0.04659619, 0.0553098, 0.07813576, 0.1112868 ])
+    action = np.multiply(action, mul_ref) * 0.5
+    action_spline_ref = np.multiply(np.ones(action.size),mul_ref) * 0.5
+    action = action + action_spline_ref
+    action = action*0.9
+    #C0 continuity at the end
+    action = np.append(action, action[0])
+    # final_str = '{'
+    # for x in action:
+    #     final_str = final_str + str(round(x,4)) + ','
+    # final_str = final_str + '};'
+    # print(final_str)
+    return action
 class WalkingController():
     
     def __init__(self,
@@ -47,18 +74,18 @@ class WalkingController():
                  phase = [0,0,0,0],
                  ):     
         ## These are empirical parameters configured to get the right controller, these were obtained from previous training iterations  
-        self.phase = {'front-left':phase[0], 'front-right':phase[1], 'back-left':phase[2] , 'back-right':phase[3]}
         self._phase = robot_data(front_right = phase[0], front_left = phase[1], back_right = phase[2], back_left = phase[3])
-        self._action_spline_ref = np.ones(10) * 0.02
+        self.front_left = leg_data()
+        self.front_right = leg_data()
+        self.back_left = leg_data()
+        self.back_right = leg_data()
         print('#########################################################')
         print('This training is for',gait_type)
         print('#########################################################')
         self._leg = leg
         self.MOTOROFFSETS = [2.3562,1.2217]
-    
-    def transform_action_to_motor_joint_command3(self, theta, action):
-        cubic_spline = lambda coeffts, t: coeffts[0] + t*coeffts[1] + t*t*coeffts[2] + t*t*t*coeffts[3]
-        spline_fit = lambda y0, y1, d0, d1: np.array([y0, d0, 3*(y1-y0) -2*d0 - d1, 2*(y0 - y1) + d0 + d1 ])
+    def update_leg_theta(self,theta):
+        """ Depending on the gait, the theta for every leg is calculated"""
         def add_phase(theta1, theta2):
             if(theta1 + theta2 < 0):
                 return 2*PI + (theta1 + theta2)
@@ -66,47 +93,20 @@ class WalkingController():
                 return (theta1 + theta2) -  2*PI
             if(0<= theta1 + theta2 <= 2*PI):
                 return theta1 + theta2
-        #Spline reference action is a circle with 0.02 radius centered at 0, -0.17
-        #Normalize action varying from -1 to 1 to -0.024 to 0.024
-        # action = action * 0.024
-        if(action.size == 10):
-            mul_ref = np.array([0.08233419, 0.07341638, 0.04249794, 0.04249729, 0.07341638, 0.08183298,0.07368498, 0.04149645, 0.04159619, 0.07313576])
-        elif(action.size == 18):
-            mul_ref = np.array([0.08733419, 0.07801237, 0.07310331, 0.05280192, 0.04580373, 0.04580335, 0.05280085, 0.07310168, 0.07801237, 0.08683298, 0.11530908, 0.07157067, 0.05135627, 0.0447909,  0.04467491, 0.05151569, 0.0710504,  0.11530908])
-        elif(action.size == 20):
-            mul_ref = np.array([0.08733419, 0.07832142, 0.07841638, 0.05661231, 0.04749794, 0.045, 0.04749729, 0.05661107, 0.07841638, 0.07832142, 0.08683298, 0.1112868, 0.07868498, 0.05570797, 0.04649645, 0.04400026, 0.04659619, 0.0553098, 0.07813576, 0.1112868 ])
+        self.front_right.theta = add_phase(theta,self._phase.front_right)
+        self.front_left.theta = add_phase(theta,self._phase.front_left)
+        self.back_right.theta = add_phase(theta,self._phase.back_right)
+        self.back_left.theta = add_phase(theta,self._phase.back_left)
 
-
-        action = np.multiply(action, mul_ref) * 0.5
-        action_spline_ref = np.multiply(np.ones(action.size),mul_ref) * 0.5
-        action = action + action_spline_ref
-        
-        #TODO REMOVE LATER
-        action = action*0.9
-        
-        #C0 continuity at the end
-        action = np.append(action, action[0])
-
-        final_str = '{'
-        for x in action:
-            final_str = final_str + str(round(x,4)) + ','
-        final_str = final_str + '};'
-        # print(final_str)
+    def transform_action_to_motor_joint_command3(self, theta, action):
+        cubic_spline = lambda coeffts, t: coeffts[0] + t*coeffts[1] + t*t*coeffts[2] + t*t*t*coeffts[3]
+        spline_fit = lambda y0, y1, d0, d1: np.array([y0, d0, 3*(y1-y0) -2*d0 - d1, 2*(y0 - y1) + d0 + d1 ])
+        action = convert_action_to_polar_coordinates(action)
         n = action.size -1
-        front_right = leg_data()
-        front_left = leg_data()
-        back_right = leg_data()
-        back_left = leg_data()
-        
         Legs = namedtuple('legs', 'front_right front_left back_right back_left')
-        legs = Legs(front_right = front_right, front_left = front_left, back_right = back_right, back_left = back_left)
-        
-        #assign thetas
-        front_right.theta = add_phase(theta,self._phase.front_right)
-        front_left.theta = add_phase(theta,self._phase.front_left)
-        back_right.theta = add_phase(theta,self._phase.back_right)
-        back_left.theta = add_phase(theta,self._phase.back_left)
+        legs = Legs(front_right = self.front_right, front_left = self.front_left, back_right = self.back_right, back_left = self.back_left)
         count = 0
+        self.update_leg_theta(theta)
         for leg in legs:
             idx = int((leg.theta - 1e-4)*n/(2*PI))
             tau = (leg.theta - 2*PI*idx/n) /(2*PI/n)
@@ -121,8 +121,6 @@ class WalkingController():
                 d1 = 0 # Slope at end-point is zero
             else:
                 d1 = (action[idx+2] - action[idx])/2 # Central difference
-
-
             coeffts = spline_fit(y0, y1, d0, d1)
             leg.r = cubic_spline(coeffts, tau)
             leg.x = -leg.r * math.cos(leg.theta)
@@ -132,7 +130,6 @@ class WalkingController():
             leg.motor_knee = leg.motor_knee + self.MOTOROFFSETS[1]
         leg_motor_angles = [legs.front_right.motor_hip, legs.front_right.motor_knee, legs.front_left.motor_hip, legs.front_left.motor_knee,
         legs.back_right.motor_hip, legs.back_right.motor_knee, legs.back_left.motor_hip, legs.back_left.motor_knee]
-
         return np.zeros(2),leg_motor_angles, np.zeros(2), np.zeros(8) 
     
     def _inverse_stoch2(self, x,y,Leg):
