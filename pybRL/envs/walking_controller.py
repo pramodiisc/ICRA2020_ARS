@@ -121,8 +121,7 @@ class WalkingController():
             leg.y = leg.r * np.sin(leg.theta) + y_center
             leg.motor_knee, leg.motor_hip, _, _ = self._inverse_stoch2(leg.x, leg.y, self._leg)
             leg.motor_hip = leg.motor_hip + self.MOTOROFFSETS[0]
-            leg.motor_knee = leg.motor_knee + self.MOTOROFFSETS[1]
-            
+            leg.motor_knee = leg.motor_knee + self.MOTOROFFSETS[1]   
         leg_motor_angles = [legs.front_right.motor_hip, legs.front_right.motor_knee, legs.front_left.motor_hip, legs.front_left.motor_knee,
         legs.back_right.motor_hip, legs.back_right.motor_knee, legs.back_left.motor_hip, legs.back_left.motor_knee]
         return np.zeros(2),leg_motor_angles, np.zeros(2), np.zeros(8) 
