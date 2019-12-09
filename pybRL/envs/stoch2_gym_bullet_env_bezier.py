@@ -101,7 +101,7 @@ class Stoch2Env(gym.Env):
         self._pybullet_client.setGravity(0, 0, -9.8)
         
         #Change this to suit your path
-        model_path = os.path.realpath('../..')+'/pybRL/envs/stoch_two_urdf/urdf/stoch_two_urdf.urdf'
+        model_path = os.path.realpath('../..')+'/pybRL/envs/stoch_two_abduction_urdf/urdf/stoch_two_abduction_urdf.urdf'
         self.stoch2 = self._pybullet_client.loadURDF(model_path, INIT_POSITION)
         
         self._joint_name_to_id, self._motor_id_list, self._motor_id_list_obs_space = self.BuildMotorIdList()
@@ -109,7 +109,7 @@ class Stoch2Env(gym.Env):
         num_legs = 4
         for i in range(num_legs):
             self.ResetLeg(i, add_constraint=True)
-    
+        self.ResetPoseForAbd
         if self._on_rack:
             self._pybullet_client.createConstraint(
                 self.stoch2, -1, -1, -1, self._pybullet_client.JOINT_FIXED,
@@ -127,7 +127,7 @@ class Stoch2Env(gym.Env):
         num_legs = 4
         for i in range(num_legs):
             self.ResetLeg(i, add_constraint=False)
-
+        self.ResetPoseForAbd
         self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
         self._n_steps = 0
               
@@ -149,11 +149,11 @@ class Stoch2Env(gym.Env):
         angle_data = []
         counter = 0
         while(np.abs(omega*self.dt*counter) <= np.pi * self._update_action_every):
-            spine_des, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.transform_action_to_motor_joint_command3(self._theta,action)   
+            abd_m_angle_cmd, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.transform_action_to_motor_joint_command3(self._theta,action)   
             self._theta = constrain_theta(omega * self.dt + self._theta)
             qpos_act = np.array(self.GetMotorAngles())
-            m_angle_cmd_ext = np.array(leg_m_angle_cmd)
-            m_vel_cmd_ext = np.zeros(8)
+            m_angle_cmd_ext = np.array(leg_m_angle_cmd + abd_m_angle_cmd)
+            m_vel_cmd_ext = np.zeros(12)
             counter = counter+1
             for _ in range(n_frames):
                 current_angle_data = np.concatenate(([ii],self.GetMotorAngles()))
@@ -282,6 +282,7 @@ class Stoch2Env(gym.Env):
             joint_info = self._pybullet_client.getJointInfo(self.stoch2, i)
             joint_name_to_id[joint_info[1].decode("UTF-8")] = joint_info[0]
         
+        #adding abduction
         MOTOR_NAMES = [ "motor_fl_upper_hip_joint",
                         "motor_fl_upper_knee_joint", 
                         "motor_fr_upper_hip_joint",
@@ -289,7 +290,11 @@ class Stoch2Env(gym.Env):
                         "motor_bl_upper_hip_joint",
                         "motor_bl_upper_knee_joint", 
                         "motor_br_upper_hip_joint", 
-                        "motor_br_upper_knee_joint"]
+                        "motor_br_upper_knee_joint",
+                        "motor_front_left_abd_joint",
+                        "motor_front_right_abd_joint",
+                        "motor_back_left_abd_joint",
+                        "motor_back_right_abd_joint"]
         
         #   WITHOUT SPINE
         # MOTOR_NAMES = [ "motor_fl_upper_hip_joint",
@@ -377,6 +382,54 @@ class Stoch2Env(gym.Env):
                   controlMode=self._pybullet_client.VELOCITY_CONTROL,
                   targetVelocity=0)
 
+    def ResetPoseForAbd(self):
+        self._pybullet_client.resetJointState(
+            self.stoch2,
+            self._joint_name_to_id["motor_front_left_abd_joint"],
+            targetValue = 0, targetVelocity = 0)
+        self._pybullet_client.resetJointState(
+            self.stoch2,
+            self._joint_name_to_id["motor_front_right_abd_joint"],
+            targetValue = 0, targetVelocity = 0)
+        self._pybullet_client.resetJointState(
+            self.stoch2,
+            self._joint_name_to_id["motor_back_left_abd_joint"],
+            targetValue = 0, targetVelocity = 0)
+        self._pybullet_client.resetJointState(
+            self.stoch2,
+            self._joint_name_to_id["motor_back_right_abd_joint"],
+            targetValue = 0, targetVelocity = 0)
+        
+        #Set control mode for each motor and initial conditions
+        self._pybullet_client.setJointMotorControl2(
+            bodyIndex = self.stoch2,
+            jointIndex = (self._joint_name_to_id["motor_front_left_abd_joint"]),
+            controlMode = self._pybullet_client.VELOCITY_CONTROL,
+            force = 0,
+            targetVelocity = 0
+        )
+        self._pybullet_client.setJointMotorControl2(
+            bodyIndex = self.stoch2,
+            jointIndex = (self._joint_name_to_id["motor_front_right_abd_joint"]),
+            controlMode = self._pybullet_client.VELOCITY_CONTROL,
+            force = 0,
+            targetVelocity = 0
+        )
+        self._pybullet_client.setJointMotorControl2(
+            bodyIndex = self.stoch2,
+            jointIndex = (self._joint_name_to_id["motor_back_left_abd_joint"]),
+            controlMode = self._pybullet_client.VELOCITY_CONTROL,
+            force = 0,
+            targetVelocity = 0
+        )
+        self._pybullet_client.setJointMotorControl2(
+            bodyIndex = self.stoch2,
+            jointIndex = (self._joint_name_to_id["motor_back_right_abd_joint"]),
+            controlMode = self._pybullet_client.VELOCITY_CONTROL,
+            force = 0,
+            targetVelocity = 0
+        )
+        
     def GetXYTrajectory(self,action):
         rt = np.zeros((4,100))
         rtvel = np.zeros((4,100))
@@ -401,6 +454,6 @@ class Stoch2Env(gym.Env):
 
 
 if(__name__ == "__main__"):
-    env = Stoch2Env(render=True, stairs = True)
+    env = Stoch2Env(render=True, stairs = False)
     for i in range(20):
         env.step(np.zeros(18))

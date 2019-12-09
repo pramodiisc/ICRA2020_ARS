@@ -21,19 +21,21 @@ PI = np.pi
 
 @dataclass
 class leg_data:
+    name : str
     motor_hip : float = 0.0
     motor_knee : float = 0.0
+    motor_abduction : float = 0.0
     x : float = 0.0
     y : float = 0.0
     radius : float = 0.0
     theta : float = 0.0
-
+    phi : float = 0.0
 @dataclass
 class robot_data:
-    front_right : leg_data = leg_data()
-    front_left : leg_data = leg_data()
-    back_right : leg_data = leg_data()
-    back_left : leg_data = leg_data()
+    front_right : leg_data = leg_data('fr')
+    front_left : leg_data = leg_data('fl')
+    back_right : leg_data = leg_data('br')
+    back_left : leg_data = leg_data('bl')
 
 #Utility Functions
 def convert_action_to_polar_coordinates(action):
@@ -70,10 +72,10 @@ class WalkingController():
                  ):     
         ## These are empirical parameters configured to get the right controller, these were obtained from previous training iterations  
         self._phase = robot_data(front_right = phase[0], front_left = phase[1], back_right = phase[2], back_left = phase[3])
-        self.front_left = leg_data()
-        self.front_right = leg_data()
-        self.back_left = leg_data()
-        self.back_right = leg_data()
+        self.front_left = leg_data('fl')
+        self.front_right = leg_data('fr')
+        self.back_left = leg_data('bl')
+        self.back_right = leg_data('br')
         print('#########################################################')
         print('This training is for',gait_type)
         print('#########################################################')
@@ -121,10 +123,12 @@ class WalkingController():
             leg.y = leg.r * np.sin(leg.theta) + y_center
             leg.motor_knee, leg.motor_hip, _, _ = self._inverse_stoch2(leg.x, leg.y, self._leg)
             leg.motor_hip = leg.motor_hip + self.MOTOROFFSETS[0]
-            leg.motor_knee = leg.motor_knee + self.MOTOROFFSETS[1]   
+            leg.motor_knee = leg.motor_knee + self.MOTOROFFSETS[1]
         leg_motor_angles = [legs.front_right.motor_hip, legs.front_right.motor_knee, legs.front_left.motor_hip, legs.front_left.motor_knee,
         legs.back_right.motor_hip, legs.back_right.motor_knee, legs.back_left.motor_hip, legs.back_left.motor_knee]
-        return np.zeros(2),leg_motor_angles, np.zeros(2), np.zeros(8) 
+        leg_abduction_angles = [legs.front_left.motor_abduction, legs.front_right.motor_abduction, legs.back_left.motor_abduction,
+        legs.back_right.motor_abduction]
+        return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8) 
     
     def _inverse_stoch2(self, x,y,Leg):
 
