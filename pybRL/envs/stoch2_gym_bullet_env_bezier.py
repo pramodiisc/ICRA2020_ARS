@@ -109,7 +109,7 @@ class Stoch2Env(gym.Env):
         num_legs = 4
         for i in range(num_legs):
             self.ResetLeg(i, add_constraint=True)
-        self.ResetPoseForAbd
+        self.ResetPoseForAbd()
         if self._on_rack:
             self._pybullet_client.createConstraint(
                 self.stoch2, -1, -1, -1, self._pybullet_client.JOINT_FIXED,
