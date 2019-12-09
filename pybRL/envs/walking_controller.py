@@ -14,11 +14,10 @@ from __future__ import print_function
 from dataclasses import dataclass
 from collections import namedtuple
 import os
-import math
 import numpy as np
 from scipy.linalg import solve
 import matplotlib.pyplot as plt
-PI = math.pi
+PI = np.pi
 
 @dataclass
 class leg_data:
@@ -67,9 +66,6 @@ class WalkingController():
     def __init__(self,
                  gait_type='trot',
                  leg = [0.12,0.15015,0.04,0.15501,0.11187,0.04,0.2532,2.803],
-                 frequency=2,
-                 planning_space = 'joint_space',
-                 left_to_right_switch = float('nan'),
                  phase = [0,0,0,0],
                  ):     
         ## These are empirical parameters configured to get the right controller, these were obtained from previous training iterations  
@@ -85,17 +81,15 @@ class WalkingController():
         self.MOTOROFFSETS = [2.3562,1.2217]
     def update_leg_theta(self,theta):
         """ Depending on the gait, the theta for every leg is calculated"""
-        def add_phase(theta1, theta2):
-            if(theta1 + theta2 < 0):
-                return 2*PI + (theta1 + theta2)
-            if(theta1 + theta2 > 2*PI):
-                return (theta1 + theta2) -  2*PI
-            if(0<= theta1 + theta2 <= 2*PI):
-                return theta1 + theta2
-        self.front_right.theta = add_phase(theta,self._phase.front_right)
-        self.front_left.theta = add_phase(theta,self._phase.front_left)
-        self.back_right.theta = add_phase(theta,self._phase.back_right)
-        self.back_left.theta = add_phase(theta,self._phase.back_left)
+        def constrain_theta(theta):
+            theta = np.fmod(theta, 2*PI)
+            if(theta < 0):
+                theta = theta + 2*PI
+            return theta
+        self.front_right.theta = constrain_theta(theta+self._phase.front_right)
+        self.front_left.theta = constrain_theta(theta+self._phase.front_left)
+        self.back_right.theta = constrain_theta(theta+self._phase.back_right)
+        self.back_left.theta = constrain_theta(theta+self._phase.back_left)
 
     def transform_action_to_motor_joint_command3(self, theta, action):
         cubic_spline = lambda coeffts, t: coeffts[0] + t*coeffts[1] + t*t*coeffts[2] + t*t*t*coeffts[3]
@@ -107,13 +101,12 @@ class WalkingController():
         count = 0
         self.update_leg_theta(theta)
         for leg in legs:
-            idx = int((leg.theta - 1e-4)*n/(2*PI))
-            tau = (leg.theta - 2*PI*idx/n) /(2*PI/n)
+            idx = np.mod(np.floor((leg.theta*n)/(2*PI)),n)
+            idx = int(idx)
+            tau = (leg.theta - 2*PI*(idx)/n) /(2*PI/n)
             y0 = action[idx]
             y1 = action[idx+1]
             y_center = -0.195
-            if(leg == self.back_right):
-                print(idx)
             if idx == 0 :
                 d0 = 0 # Slope at start-point is zero
             else:
@@ -124,11 +117,12 @@ class WalkingController():
                 d1 = (action[idx+2] - action[idx])/2 # Central difference
             coeffts = spline_fit(y0, y1, d0, d1)
             leg.r = cubic_spline(coeffts, tau)
-            leg.x = -leg.r * math.cos(leg.theta)
-            leg.y = leg.r * math.sin(leg.theta) + y_center
+            leg.x = leg.r * np.cos(leg.theta)
+            leg.y = leg.r * np.sin(leg.theta) + y_center
             leg.motor_knee, leg.motor_hip, _, _ = self._inverse_stoch2(leg.x, leg.y, self._leg)
             leg.motor_hip = leg.motor_hip + self.MOTOROFFSETS[0]
             leg.motor_knee = leg.motor_knee + self.MOTOROFFSETS[1]
+            
         leg_motor_angles = [legs.front_right.motor_hip, legs.front_right.motor_knee, legs.front_left.motor_hip, legs.front_left.motor_knee,
         legs.back_right.motor_hip, legs.back_right.motor_knee, legs.back_left.motor_hip, legs.back_left.motor_knee]
         return np.zeros(2),leg_motor_angles, np.zeros(2), np.zeros(8) 
@@ -149,33 +143,33 @@ class WalkingController():
         R_base = [[0,0],[0.035,0]]
         xb[0] = R_base[0][0];xb[1] = R_base[1][0]
         yb[0] = R_base[0][1];yb[1] = R_base[1][1]
-        l3 = math.sqrt((x-xb[0])**2+(y-yb[0])**2)
-        theta[0] = math.atan2((y-yb[0]),(x-xb[0]))
+        l3 = np.sqrt((x-xb[0])**2+(y-yb[0])**2)
+        theta[0] = np.arctan2((y-yb[0]),(x-xb[0]))
         zeta = (l3**2 - l1**2 -l2**2)/(2*l1*l2)
         zeta = np.sign(zeta) if abs(zeta) > 1 else zeta
-        phid[0] = math.acos(zeta)
-        psi[0] = math.atan2(l2*math.sin(phid[0]),(l1+l2*math.cos(phid[0])))
+        phid[0] = np.arccos(zeta)
+        psi[0] = np.arctan2(l2*np.sin(phid[0]),(l1+l2*np.cos(phid[0])))
         q1 = theta[0] - psi[0]
         q2 = q1 + phid[0]
-        xm = l1*math.cos(q1)+l2*math.cos(q2)
-        ym = l1*math.sin(q1)+l2*math.sin(q2)
+        xm = l1*np.cos(q1)+l2*np.cos(q2)
+        ym = l1*np.sin(q1)+l2*np.sin(q2)
         xi = (xm+xb[0])
         yi = (ym+yb[0])
 
-        xi = xb[0] + l1*math.cos(q1) + 0.04*math.cos(q2-tq1)
-        yi = yb[0] + l1*math.sin(q1) + 0.04*math.sin(q2-tq1)
+        xi = xb[0] + l1*np.cos(q1) + 0.04*np.cos(q2-tq1)
+        yi = yb[0] + l1*np.sin(q1) + 0.04*np.sin(q2-tq1)
         R = [xi,yi]
-        l6 = math.sqrt(((xi-xb[1])**2+(yi-yb[1])**2))
-        theta[1] = math.atan2((yi-yb[1]),(xi-xb[1]))
+        l6 = np.sqrt(((xi-xb[1])**2+(yi-yb[1])**2))
+        theta[1] = np.arctan2((yi-yb[1]),(xi-xb[1]))
         Zeta = (l6**2 - l4**2 - l5**2)/(2*l5*l4)
         leg = 'left'
         Zeta = np.sign(Zeta) if abs(Zeta) > 1 else Zeta
-        phid[1] = math.acos(Zeta)
-        psi[1] = math.atan2(l5*math.sin(phid[1]),(l4+l5*math.cos(phid[1])))
+        phid[1] = np.arccos(Zeta)
+        psi[1] = np.arctan2(l5*np.sin(phid[1]),(l4+l5*np.cos(phid[1])))
         q3 = theta[1]+psi[1]
         q4 = q3-phid[1]
-        xm = l4*math.cos(q3)+l5*math.cos(q4)+xb[1]
-        ym = l4*math.sin(q3)+l5*math.sin(q4)+yb[1]
+        xm = l4*np.cos(q3)+l5*np.cos(q4)+xb[1]
+        ym = l4*np.sin(q3)+l5*np.sin(q4)+yb[1]
 
         if Zeta == 1:
             [q1, q2] = self._inverse_new(xm,ym,delta,Leg)
@@ -195,16 +189,16 @@ class WalkingController():
         R_base = [[1,0],[-1,0]]
         xb[0] = R_base[0][0];xb[1] = R_base[1][0]
         yb[0] = R_base[0][1];yb[1] = R_base[1][1]
-        l3 = math.sqrt((xm-xb[0])**2+(ym-yb[0])**2)
-        theta[0] = math.atan2((ym-yb[0]),(xm-xb[0]))
+        l3 = np.sqrt((xm-xb[0])**2+(ym-yb[0])**2)
+        theta[0] = np.arctan2((ym-yb[0]),(xm-xb[0]))
         zeta = (l3**2 - l1**2 -l2**2)/(2*l1*l2)
         zeta = np.sign(zeta) if abs(zeta) > 1 else zeta
-        phid[0] = math.acos(zeta)
-        psi[0] = math.atan2(l2*math.sin(phid[0]),(l1+l2*math.cos(phid[0])))
+        phid[0] = np.arccos(zeta)
+        psi[0] = np.arctan2(l2*np.sin(phid[0]),(l1+l2*np.cos(phid[0])))
         q1 = theta[0] + psi[0]
         q2 = q1 - phid[0]
-        xm = l1*math.cos(q1)+l2*math.cos(q2);
-        ym = l1*math.sin(q1)+l2*math.sin(q2);
+        xm = l1*np.cos(q1)+l2*np.cos(q2)
+        ym = l1*np.sin(q1)+l2*np.sin(q2)
 
         return [q1,q2]
 

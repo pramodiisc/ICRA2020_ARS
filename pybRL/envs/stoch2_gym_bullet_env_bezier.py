@@ -1,7 +1,6 @@
 import sys, os
 sys.path.append(os.path.realpath('../..'))
 import numpy as np
-import math
 import gym
 import os
 from gym import utils, spaces
@@ -20,8 +19,12 @@ KNEE_CONSTRAINT_POINT_RIGHT = [0.014, 0, 0.076] #hip
 KNEE_CONSTRAINT_POINT_LEFT = [0.0,0.0,-0.077] #knee
 RENDER_HEIGHT = 720 #360
 RENDER_WIDTH = 960 #480 
-PI = math.pi
-
+PI = np.pi
+def constrain_theta(theta):
+            theta = np.fmod(theta, 2*PI)
+            if(theta < 0):
+                theta = theta + 2*PI
+            return theta
 class Stoch2Env(gym.Env):
     
     def __init__(self,
@@ -44,7 +47,7 @@ class Stoch2Env(gym.Env):
         self._theta = 0
         self._theta0 = 0
         self._update_action_every = 1.  # update is every 50% of the step i.e., theta goes from 0 to pi/2
-        self._frequency = 2.8 #change back to 1
+        self._frequency = -2.8 #change back to 1
         self._kp = 20
         self._kd = 2
         self.dt = 0.001
@@ -62,9 +65,6 @@ class Stoch2Env(gym.Env):
 
         self._xpos_previous = 0.0
         self._walkcon = walking_controller.WalkingController(gait_type=gait,
-                                                             planning_space = 'polar_task_space',
-                                                             left_to_right_switch = True,
-                                                             frequency=self._frequency,
                                                              phase=phase)
         
         self._cam_dist = 1.0
@@ -141,18 +141,16 @@ class Stoch2Env(gym.Env):
         return ob, reward,False, ang_data
 
     def do_simulation(self, action, n_frames, callback=None):
-        omega = 2 * math.pi * self._frequency
-        self._theta = self._theta0
+        omega = 2 * np.pi * self._frequency
         energy_spent_per_step = 0
         self.action = action
         cost_reference = 0
         ii = 0
         angle_data = []
         counter = 0
-        while(np.abs(omega*self.dt*counter) <= math.pi * self._update_action_every):
-            theta = self._theta
-            spine_des, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.transform_action_to_motor_joint_command3(theta,action)   
-            self._theta = (omega * self.dt + theta)
+        while(np.abs(omega*self.dt*counter) <= np.pi * self._update_action_every):
+            spine_des, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.transform_action_to_motor_joint_command3(self._theta,action)   
+            self._theta = constrain_theta(omega * self.dt + self._theta)
             qpos_act = np.array(self.GetMotorAngles())
             m_angle_cmd_ext = np.array(leg_m_angle_cmd)
             m_vel_cmd_ext = np.zeros(8)
@@ -167,7 +165,6 @@ class Stoch2Env(gym.Env):
                 joint_power[ joint_power < 0.0] = 0.0 # Zero all the negative power terms
                 energy_spent = np.sum(joint_power) * self.dt/n_frames
                 energy_spent_per_step += energy_spent           
-        self._theta0 = self._theta % (2* math.pi)
         self._n_steps += 1
         return energy_spent_per_step, cost_reference, angle_data
   
@@ -387,7 +384,7 @@ class Stoch2Env(gym.Env):
         xyvel = np.zeros((4,100))
         
         for i in range(100):
-            theta = 2*math.pi/100*i
+            theta = 2*np.pi/100*i
             rt[:,i], rtvel[:,i] = self._walkcon.transform_action_to_rt(theta, action)
             
             r_ac1 = rt[0,i] 
@@ -395,10 +392,10 @@ class Stoch2Env(gym.Env):
             r_ac2 = rt[2,i] 
             the_ac2 = rt[3,i] 
             
-            xy[0,i] =  r_ac1*math.sin(the_ac1)
-            xy[1,i] = -r_ac1*math.cos(the_ac1)
-            xy[2,i] =  r_ac2*math.sin(the_ac2)
-            xy[3,i] = -r_ac2*math.cos(the_ac2)
+            xy[0,i] =  r_ac1*np.sin(the_ac1)
+            xy[1,i] = -r_ac1*np.cos(the_ac1)
+            xy[2,i] =  r_ac2*np.sin(the_ac2)
+            xy[3,i] = -r_ac2*np.cos(the_ac2)
             
         return xy
 
