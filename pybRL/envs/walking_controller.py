@@ -112,6 +112,8 @@ class WalkingController():
             y0 = action[idx]
             y1 = action[idx+1]
             y_center = -0.195
+            if(leg == self.back_right):
+                print(idx)
             if idx == 0 :
                 d0 = 0 # Slope at start-point is zero
             else:
