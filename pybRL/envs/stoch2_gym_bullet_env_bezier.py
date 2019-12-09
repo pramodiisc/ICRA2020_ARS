@@ -148,13 +148,15 @@ class Stoch2Env(gym.Env):
         cost_reference = 0
         ii = 0
         angle_data = []
-        while(self._theta - self._theta0 <= math.pi * self._update_action_every and not self._theta >= 2 * math.pi):
+        counter = 0
+        while(np.abs(omega*self.dt*counter) <= math.pi * self._update_action_every):
             theta = self._theta
             spine_des, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.transform_action_to_motor_joint_command3(theta,action)   
             self._theta = (omega * self.dt + theta)
             qpos_act = np.array(self.GetMotorAngles())
             m_angle_cmd_ext = np.array(leg_m_angle_cmd)
             m_vel_cmd_ext = np.zeros(8)
+            counter = counter+1
             for _ in range(n_frames):
                 current_angle_data = np.concatenate(([ii],self.GetMotorAngles()))
                 angle_data.append(current_angle_data)

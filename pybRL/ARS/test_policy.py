@@ -41,7 +41,7 @@ elif(action.size == 20):
   mul_ref = np.array([0.08733419, 0.07832142, 0.07841638, 0.05661231, 0.04749794, 0.045, 0.04749729, 0.05661107, 0.07841638, 0.07832142, 0.08683298, 0.1112868, 0.07868498, 0.05570797, 0.04649645, 0.04400026, 0.04659619, 0.0553098, 0.07813576, 0.1112868 ])
 steps = 0
 while True:
-  while steps<1:
+  while steps<3:
     # action = policy.dot(state)
     action = np.clip(action, -1, 1)
     state, reward, done, info = env.step(action)
