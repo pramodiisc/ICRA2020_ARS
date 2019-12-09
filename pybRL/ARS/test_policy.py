@@ -18,7 +18,7 @@ bound = [0, 0, PI, PI]
 trot = [0, PI, PI , 0]
 custom_phase = [0, PI, PI+0.1 , 0.1]
 
-env = e.Stoch2Env(render = True, phase = trot, stairs = False)
+env = e.Stoch2Env(render = True, phase = trot, stairs = False, on_rack=False, gait = "turn_left")
 #path = '/pybRL/experiments/spline/Jul25_7/iterations/policy_0.npy'
 #path = os.path.realpath('../..') + path
 state = env.reset()
@@ -43,7 +43,7 @@ steps = 0
 while steps<10:
   # action = policy.dot(state)
   action = np.clip(action, -1, 1)
-  state, reward, done, info = env.step(action)
+  state, reward, done, info = env.step(np.ones(18))
   # print(state)
   action_str = '{'
   for x in action:

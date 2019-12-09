@@ -30,6 +30,8 @@ class leg_data:
     radius : float = 0.0
     theta : float = 0.0
     phi : float = 0.0
+    gamma : float = 0.0
+    b: float = 1.0
 @dataclass
 class robot_data:
     front_right : leg_data = leg_data('fr')
@@ -64,7 +66,6 @@ def convert_action_to_polar_coordinates(action):
     # print(final_str)
     return action
 class WalkingController():
-    
     def __init__(self,
                  gait_type='trot',
                  leg = [0.12,0.15015,0.04,0.15501,0.11187,0.04,0.2532,2.803],
@@ -80,7 +81,55 @@ class WalkingController():
         print('This training is for',gait_type)
         print('#########################################################')
         self._leg = leg
+        self.gamma = 0
         self.MOTOROFFSETS = [2.3562,1.2217]
+        self.gait = gait_type
+        self.set_b_value()
+        self.set_gamma_value()
+        self.set_leg_gamma()
+    
+    def set_b_value(self):
+        if(self.gait == "trot" or self.gait == "bound" or self.gait == "walk"):
+            self.front_left.b = 1
+            self.front_right.b = -1
+            self.back_left.b = -1
+            self.back_right.b = 1
+        #All these values will be negative of TIVA CODE, because of coordinate difference between simulation and TIVA
+        elif(self.gait == "sidestep_left"):
+            self.front_left.b = 1
+            self.front_right.b = -1
+            self.back_left.b = 1
+            self.back_right.b = -1
+        elif(self.gait == "sidestep_right"):
+            self.front_left.b = -1
+            self.front_right.b = 1
+            self.back_left.b = -1
+            self.back_right.b = 1
+        elif(self.gait == "turn_left"):
+            self.front_left.b = 1
+            self.front_right.b = -1
+            self.back_left.b = -1
+            self.back_right.b = 1
+        elif(self.gait == "turn_right"):
+            self.front_left.b = -1
+            self.front_right.b = 1
+            self.back_left.b = 1
+            self.back_right.b = -1
+
+    def set_gamma_value(self):
+        if(self.gait == "trot" or self.gait == "bound" or self.gait == "walk"):
+            self.gamma = PI/2
+        elif(self.gait == "sidestep_left"):
+            self.gamma = 0
+        elif(self.gait == "sidestep_right"):
+            self.gamma = PI
+        elif(self.gait == "turn_left"):
+            self.gamma = PI/4
+        elif(self.gait == "turn_right"):
+            self.gamma = 3*PI/4
+        elif(self.gait == "backward_trot" or self.gait == "backward_bound" or self.gait == "backward_walk"):
+            self.gamma = -PI/2
+
     def update_leg_theta(self,theta):
         """ Depending on the gait, the theta for every leg is calculated"""
         def constrain_theta(theta):
@@ -92,6 +141,19 @@ class WalkingController():
         self.front_left.theta = constrain_theta(theta+self._phase.front_left)
         self.back_right.theta = constrain_theta(theta+self._phase.back_right)
         self.back_left.theta = constrain_theta(theta+self._phase.back_left)
+    def set_leg_gamma(self):
+        if(self.gait == "turn_left" or self.gait == "turn_right"):
+            self.front_left.gamma = self.gamma
+            self.front_right.gamma = PI + self.gamma
+            self.back_left.gamma = -1*(PI + self.gamma)
+            self.back_right.gamma =-1*self.gamma
+        else:
+            self.front_left.gamma = self.gamma
+            self.front_right.gamma = PI - self.gamma
+            self.back_left.gamma = self.gamma
+            self.back_right.gamma = PI - self.gamma
+
+        
 
     def transform_action_to_motor_joint_command3(self, theta, action):
         cubic_spline = lambda coeffts, t: coeffts[0] + t*coeffts[1] + t*t*coeffts[2] + t*t*t*coeffts[3]
@@ -119,11 +181,13 @@ class WalkingController():
                 d1 = (action[idx+2] - action[idx])/2 # Central difference
             coeffts = spline_fit(y0, y1, d0, d1)
             leg.r = cubic_spline(coeffts, tau)
-            leg.x = leg.r * np.cos(leg.theta)
+            leg.x = leg.r * np.cos(leg.theta)*np.sin(leg.gamma)
             leg.y = leg.r * np.sin(leg.theta) + y_center
+            leg.z = leg.r * np.cos(leg.gamma)*(1 - leg.b * np.cos(leg.theta))
             leg.motor_knee, leg.motor_hip, _, _ = self._inverse_stoch2(leg.x, leg.y, self._leg)
             leg.motor_hip = leg.motor_hip + self.MOTOROFFSETS[0]
             leg.motor_knee = leg.motor_knee + self.MOTOROFFSETS[1]
+            leg.motor_abduction = -1*constrain_abduction(np.arctan2(leg.z, -leg.y))
         leg_motor_angles = [legs.front_right.motor_hip, legs.front_right.motor_knee, legs.front_left.motor_hip, legs.front_left.motor_knee,
         legs.back_right.motor_hip, legs.back_right.motor_knee, legs.back_left.motor_hip, legs.back_left.motor_knee]
         leg_abduction_angles = [legs.front_left.motor_abduction, legs.front_right.motor_abduction, legs.back_left.motor_abduction,
@@ -205,6 +269,12 @@ class WalkingController():
 
         return [q1,q2]
 
+def constrain_abduction(angle):
+    if(angle < 0):
+        angle = 0
+    elif(angle > 0.35):
+        angle = 0.35
+    return angle
 
 if(__name__ == "__main__"):
     # action = np.array([ 0.24504616, -0.11582746,  0.71558934, -0.46091432, -0.36284493,  0.00495828, -0.06466855, -0.45247894,  0.72117291, -0.11068088])
