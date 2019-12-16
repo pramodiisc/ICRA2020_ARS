@@ -105,15 +105,15 @@ class WalkingController():
             self.back_left.b = -1
             self.back_right.b = 1
         elif(self.gait == "turn_left"):
-            self.front_left.b = 1
-            self.front_right.b = -1
-            self.back_left.b = -1
-            self.back_right.b = 1
-        elif(self.gait == "turn_right"):
             self.front_left.b = -1
             self.front_right.b = 1
             self.back_left.b = 1
             self.back_right.b = -1
+        elif(self.gait == "turn_right"):
+            self.front_left.b = 1
+            self.front_right.b = -1
+            self.back_left.b = -1
+            self.back_right.b = 1
 
     def set_gamma_value(self):
         if(self.gait == "trot" or self.gait == "bound" or self.gait == "walk"):
@@ -123,9 +123,9 @@ class WalkingController():
         elif(self.gait == "sidestep_right"):
             self.gamma = 0
         elif(self.gait == "turn_left"):
-            self.gamma = 3*PI/4
-        elif(self.gait == "turn_right"):
             self.gamma = PI/4
+        elif(self.gait == "turn_right"):
+            self.gamma = 3*PI/4
         elif(self.gait == "backward_trot" or self.gait == "backward_bound" or self.gait == "backward_walk"):
             self.gamma = -PI/2
 
@@ -141,11 +141,17 @@ class WalkingController():
         self.back_right.theta = constrain_theta(theta+self._phase.back_right)
         self.back_left.theta = constrain_theta(theta+self._phase.back_left)
     def set_leg_gamma(self):
-        if(self.gait == "turn_left" or self.gait == "turn_right"):
+        if(self.gait == "turn_left" ):
             self.front_right.gamma = self.gamma
             self.front_left.gamma = PI + self.gamma
             self.back_right.gamma = -1*(PI + self.gamma)
             self.back_left.gamma =-1*self.gamma
+        elif(self.gait == "turn_right"):
+            self.front_left.gamma = self.gamma
+            self.front_right.gamma = PI + self.gamma
+            self.back_left.gamma = -1*(PI + self.gamma)
+            self.back_right.gamma =-1*self.gamma
+
         else:
             self.front_left.gamma = self.gamma
             self.front_right.gamma = PI - self.gamma
