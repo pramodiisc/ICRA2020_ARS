@@ -233,7 +233,6 @@ class Stoch2Env(gym.Env):
 
         for motor_id, motor_torque in zip(self._motor_id_list, applied_motor_torque):
             self.SetMotorTorqueById(motor_id, motor_torque)
-
         return applied_motor_torque
     def GetObservation(self):
         pos, ori = self.GetBasePosAndOrientation()
@@ -451,6 +450,21 @@ class Stoch2Env(gym.Env):
             xy[3,i] = -r_ac2*np.cos(the_ac2)
             
         return xy
+
+    
+    def simulate_command(self, m_angle_cmd_ext, m_vel_cmd_ext, callback=None):
+        """
+        Provides an interface for testing, you can give external position/ velocity commands and see how the robot behaves
+        """
+        omega = 2 * np.pi * self._frequency
+        angle_data = []
+        counter = 0
+        while(np.abs(omega*self.dt*counter) <= np.pi * self._update_action_every):
+            self._theta = constrain_theta(omega * self.dt + self._theta)
+            for _ in range(self._frame_skip):
+                applied_motor_torque = self._apply_pd_control(m_angle_cmd_ext, m_vel_cmd_ext)
+                self._pybullet_client.stepSimulation()           
+        return 0
 
 
 if(__name__ == "__main__"):
