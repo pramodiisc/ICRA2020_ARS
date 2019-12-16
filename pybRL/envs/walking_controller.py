@@ -141,12 +141,7 @@ class WalkingController():
         self.back_right.theta = constrain_theta(theta+self._phase.back_right)
         self.back_left.theta = constrain_theta(theta+self._phase.back_left)
     def set_leg_gamma(self):
-        if(self.gait == "turn_left" ):
-            self.front_left.gamma = self.gamma
-            self.front_right.gamma = PI + self.gamma
-            self.back_left.gamma = -1*(PI + self.gamma)
-            self.back_right.gamma =-1*self.gamma
-        elif(self.gait == "turn_right"):
+        if(self.gait == "turn_left" or self.gait == "turn_right"):
             self.front_right.gamma = self.gamma
             self.front_left.gamma = PI + self.gamma
             self.back_right.gamma = -1*(PI + self.gamma)
