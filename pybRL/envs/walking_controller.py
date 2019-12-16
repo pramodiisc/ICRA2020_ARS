@@ -94,7 +94,6 @@ class WalkingController():
             self.front_right.b = -1
             self.back_left.b = -1
             self.back_right.b = 1
-        #All these values will be negative of TIVA CODE, because of coordinate difference between simulation and TIVA -- maybe not
         elif(self.gait == "sidestep_left"):
             self.front_left.b = 1
             self.front_right.b = -1
@@ -195,8 +194,8 @@ class WalkingController():
             leg.motor_knee = leg.motor_knee + self.MOTOROFFSETS[1]
             #-1 is also due to a coordinate difference
             leg.motor_abduction = constrain_abduction(np.arctan2(leg.z, -leg.y))
-        leg_motor_angles = [legs.front_right.motor_hip, legs.front_right.motor_knee, legs.front_left.motor_hip, legs.front_left.motor_knee,
-        legs.back_right.motor_hip, legs.back_right.motor_knee, legs.back_left.motor_hip, legs.back_left.motor_knee]
+        leg_motor_angles = [legs.front_left.motor_hip, legs.front_left.motor_knee, legs.front_right.motor_hip, legs.front_right.motor_knee,
+        legs.back_left.motor_hip, legs.back_left.motor_knee, legs.back_right.motor_hip, legs.back_right.motor_knee]
         leg_abduction_angles = [legs.front_left.motor_abduction, legs.front_right.motor_abduction, legs.back_left.motor_abduction,
         legs.back_right.motor_abduction]
         return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8) 
