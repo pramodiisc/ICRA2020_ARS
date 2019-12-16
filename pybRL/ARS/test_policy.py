@@ -18,9 +18,9 @@ bound = [0, 0, PI, PI]
 trot = [0, PI, PI , 0]
 custom_phase = [0, PI, PI+0.1 , 0.1]
 
-env = e.Stoch2Env(render = True, phase = trot, stairs = False, on_rack=True, gait = "sidestep_left")
+env = e.Stoch2Env(render = True, phase = trot, stairs = False, on_rack=False, gait = "turn_left")
 #path = '/pybRL/experiments/spline/Jul25_7/iterations/policy_0.npy'
-#path = os.path.realpath('../..') + path
+#path = os.path.realpath('../..') + path 
 state = env.reset()
 logger = DataLog()
 i = 0

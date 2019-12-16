@@ -23,7 +23,7 @@ state = env.reset()
 logger = DataLog()
 i = 0
 steps = 0
-abduction_command = [PI/2,PI/2,PI/2,PI/2]
+abduction_command = [-PI/4,PI/4,-PI/4,PI/4]
 xy_command = [0,0,0,0,0,0,0,0]
 motor_command = xy_command+abduction_command
 
