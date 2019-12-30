@@ -1,0 +1,182 @@
+<!-- Reference: http://mujoco.org/book/XMLreference.html-->
+<mujoco model="stoch_two_urdf">
+    <compiler angle="radian" meshdir="./meshes/" />
+    <option  gravity="0 0 -9.81" timestep="0.001" cone="elliptic" iterations="50" impratio="1"/><!-- cone="elliptic" impratio="1.5"-->
+    <default>
+        <joint type="hinge" damping="0.4" />
+        <!--<geom conaffinity="1" condim="3" />-->
+        <motor forcelimited="true" forcerange="-10. 10." ctrllimited="true" ctrlrange="-50.0 50.0" gear="1" />
+    </default>
+
+    <!--<size njmax="500" nconmax="100" />-->
+    <asset>
+        <mesh name="base_link" file="base_link.STL" />
+        <mesh name="front_body_link" file="front_body_link.STL" />
+        <mesh name="fl_upper_hip_link" file="fl_upper_hip_link.STL" />
+        <mesh name="fl_lower_hip_link" file="fl_lower_hip_link.STL" />
+        <mesh name="fl_upper_knee_link" file="fl_upper_knee_link.STL" />
+        <mesh name="fl_lower_knee_link" file="fl_lower_knee_link.STL" />
+        <mesh name="fr_upper_hip_link" file="fr_upper_hip_link.STL" />
+        <mesh name="fr_lower_hip_link" file="fr_lower_hip_link.STL" />
+        <mesh name="fr_upper_knee_link" file="fr_upper_knee_link.STL" />
+        <mesh name="fr_lower_knee_link" file="fr_lower_knee_link.STL" />
+        <mesh name="back_body_link" file="back_body_link.STL" />
+        <mesh name="bl_upper_hip_link" file="bl_upper_hip_link.STL" />
+        <mesh name="bl_lower_hip_link" file="bl_lower_hip_link.STL" />
+        <mesh name="bl_upper_knee_link" file="bl_upper_knee_link.STL" />
+        <mesh name="bl_lower_knee_link" file="bl_lower_knee_link.STL" />
+        <mesh name="br_upper_hip_link" file="br_upper_hip_link.STL" />
+        <mesh name="br_lower_hip_link" file="br_lower_hip_link.STL" />
+        <mesh name="br_upper_knee_link" file="br_upper_knee_link.STL" />
+        <mesh name="br_lower_knee_link" file="br_lower_knee_link.STL" />
+
+        <texture builtin="gradient" height="100" rgb1="1 1 1" rgb2="0 0 0" type="skybox" width="100"/>
+        <texture builtin="flat" height="1278" mark="cross" markrgb="1 1 1" name="texgeom" random="0.01" rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" type="cube" width="127"/>
+        <texture builtin="checker" height="100" name="texplane" rgb1="0 0 0" rgb2="0.8 0.8 0.8" type="2d" width="100"/>
+        <material name="MatPlane" reflectance="0.5" shininess="1" specular="1" texrepeat="60 60" texture="texplane"/>
+        <material name="geom" texture="texgeom" texuniform="true"/>
+    </asset>
+
+
+
+    <worldbody>
+        <light diffuse=".5 .5 .5" pos="0 0 3" dir="0 0 -1"/> <!-- condim="3" friction="1 .5 .5" -->
+        <geom  conaffinity="1" condim="3"  material="MatPlane" name="floor" pos="0 0 0" rgba="0.8 0.9 0.8 1" size="40 40 40" type="plane" />
+
+        <body name="base_link" pos="0 0 0.29">
+            <camera name="track" mode="trackcom" pos="0 -3 0" xyaxes="1 0 0 0 0 1"/>
+            <inertial pos="-6.7077e-06 3.522e-06 -4.2568e-05" quat="0.00216474 0.707103 -0.00216474 0.707103" mass="0.7" diaginertia="0.00010275 9.81615e-05 4.7513e-06" />
+            <!-- qpos[0],..,qpos[6] -->
+            <joint type="free"/>
+            <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="base_link" />
+            <body name="front_body_link" pos="0.04 0 0">
+                <inertial pos="0.086648 1.8599e-07 -0.0023439" quat="0.696943 0.69688 0.119553 -0.119732" mass="1" diaginertia="0.0045394 0.0043326 0.0012166" />
+                <!-- qpos[7] ctrl[0]-->
+                <joint name="motor_front_body_spine_joint" pos="0 0 0" axis="0 1 0" limited="true" range="-0.5 0.5" />
+                <geom name="stoch_head" type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="front_body_link" />
+                <body name="fl_upper_hip_link" pos="0.0656 0.11291 -0.031073" quat="0.923872 -0.00851612 -0.382589 0.00352671">
+                    <inertial pos="-0.054218 0 -1.793e-07" mass="0.05" diaginertia="0.001 0.001 0.001" />
+                    <!-- qpos[8] ctrl[1]-->
+                    <joint name="motor_fl_upper_hip_joint" pos="0 0 0" axis="0 -1 0" limited="true" range="-0.78 0.78" />
+                    <geom type="mesh" rgba="0.89804 0.91765 0.92941 1" mesh="fl_upper_hip_link" />
+                    <body name="fl_lower_hip_link" pos="-0.12 0.0045 0" quat="-0.659309 -5.18356e-06 -0.751872 5.18356e-06">
+                        <inertial pos="0.11157 0.00011378 -0.034185" quat="-0.00095865 0.758091 0.000824677 0.652147" mass="0.05" diaginertia="9.59277e-06 9.59277e-06 9.59277e-06" />
+                        <!-- qpos[9] -->
+                        <joint name="fl_lower_hip_joint" pos="0 0 0" axis="0 1 0" />
+                        <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="fl_lower_hip_link" />  <!-- Connect1 -->
+                    </body>
+                </body>
+                <body name="fl_upper_knee_link" pos="0.1006 0.11291 -0.031073" quat="0.819136 -0.00755065 0.573526 -0.00528688">
+                    <inertial pos="0.014638 0 0" mass="0.03" diaginertia="1e-12 1e-12 1e-12" />
+                    <!-- qpos[10] ctrl[2]-->
+                    <joint name="motor_fl_upper_knee_joint" pos="0 0 0" axis="0 -1 0" limited="true" range="-1.22 1.22" />
+                    <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="fl_upper_knee_link" />
+                    <body name="fl_lower_knee_link" pos="0.04 0.008 0" quat="0.614972 6.37586e-07 -0.788549 -6.37586e-07">
+                        <inertial pos="-0.0775 0 0" mass="0.05" diaginertia="1e-12 1e-12 1e-12" />
+                        <!-- qpos[11] -->
+                        <joint name="fl_lower_knee_joint" pos="0 0 0" axis="0 1 0" />
+                        <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="fl_lower_knee_link" />  <!-- Connect1 -->
+                    </body>
+                </body>
+                <body name="fr_upper_hip_link" pos="0.0656 -0.11291 -0.031073" quat="0.923872 0.00851584 -0.382589 -0.00352644">
+                    <inertial pos="-0.054218 0 -1.793e-07" mass="0.05" diaginertia="1e-12 1e-12 1e-12" />
+                    <!-- qpos[12] ctrl[3]-->
+                    <joint name="motor_fr_upper_hip_joint" pos="0 0 0" axis="0 -1 0" limited="true" range="-0.78 0.78" />
+                    <geom type="mesh" rgba="0.89804 0.91765 0.92941 1" mesh="fr_upper_hip_link" />
+                    <body name="fr_lower_hip_link" pos="-0.12 -0.0045 0" quat="-0.659309 -5.18356e-06 -0.751872 5.18356e-06">
+                        <inertial pos="0.11157 0.00011378 -0.034185" quat="-0.00095865 0.758091 0.000824677 0.652147" mass="0.05" diaginertia="9.59277e-06 9.59277e-06 9.59277e-06" />
+                        <!-- qpos[13] -->
+                        <joint name="fr_lower_hip_joint" pos="0 0 0" axis="0 1 0" />   <!-- Connect2 -->
+                        <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="fr_lower_hip_link" />
+                    </body>
+                </body>
+                <body name="fr_upper_knee_link" pos="0.1006 -0.11291 -0.031073" quat="0.819136 0.00755041 0.573526 0.00528664">
+                    <inertial pos="0.014638 0 0" mass="0.03" diaginertia="1e-12 1e-12 1e-12" />
+                    <!-- qpos[14] ctrl[4]-->
+                    <joint name="motor_fr_upper_knee_joint" pos="0 0 0" axis="0 -1 0" limited="true" range="-1.22 1.22" />
+                    <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="fr_upper_knee_link" />
+                    <body name="fr_lower_knee_link" pos="0.04 -0.008 0" quat="-0.614972 5.15542e-06 0.788549 5.15542e-06">
+                        <inertial pos="-0.0775 0 0" mass="0.05" diaginertia="1e-12 1e-12 1e-12" />
+                        <!-- qpos[15] -->
+                        <joint name="fr_lower_knee_joint" pos="0 0 0" axis="0 1 0" />   <!-- Connect2 -->
+                        <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="fr_lower_knee_link" />
+                    </body>
+                </body>
+            </body>
+            <body name="back_body_link" pos="-0.04 0 0" quat="1 3.1395e-07 -5.229e-08 0">
+                <inertial pos="-0.087573 -1.9752e-07 -0.0027092" quat="0.704868 0.704757 -0.0569949 0.056833" mass="1" diaginertia="0.0045722 0.0043935 0.0012392" />
+                <!-- qpos[16] ctrl[5]-->
+                <joint name="motor_back_body_spine_joint" pos="0 0 0" axis="0 1 0" limited="true" range="-0.5 0.5" />
+                <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="back_body_link" />
+                <body name="bl_upper_hip_link" pos="-0.1032 0.11362 -0.031107" quat="0.923879 -4.97732e-07 -0.382684 2.06173e-07">
+                    <inertial pos="-0.054218 0 -1.793e-07" mass="0.05" diaginertia="1e-12 1e-12 1e-12" />
+                    <!-- qpos[17] ctrl[6]-->
+                    <joint name="motor_bl_upper_hip_joint" pos="0 0 0" axis="0 -1 0" limited="true" range="-0.78 0.78" />
+                    <geom type="mesh" rgba="0.89804 0.91765 0.92941 1" mesh="bl_upper_hip_link" />
+                    <body name="bl_lower_hip_link" pos="-0.12 0.0045 0" quat="-0.659159 -5.18349e-06 -0.752004 5.18349e-06">
+                        <inertial pos="0.11157 0.00011378 -0.034185" quat="-0.00095865 0.758091 0.000824677 0.652147" mass="0.05" diaginertia="9.59277e-06 9.59277e-06 9.59277e-06" />
+                        <!-- qpos[18] -->
+                        <joint name="bl_lower_hip_joint" pos="0 0 0" axis="0 1 0" /> <!-- Connect3 -->
+                        <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="bl_lower_hip_link" />
+                    </body>
+                </body>
+                <body name="bl_upper_knee_link" pos="-0.0682 0.11362 -0.031107" quat="0.819161 -4.41353e-07 0.573564 -3.09044e-07">
+                    <inertial pos="0.014638 0 0" mass="0.03" diaginertia="1e-12 1e-12 1e-12" />
+                    <!-- qpos[19] ctrl[7]-->
+                    <joint name="motor_bl_upper_knee_joint" pos="0 0 0" axis="0 -1 0" limited="true" range="-1.22 1.22" />
+                    <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="bl_upper_knee_link" />
+                    <body name="bl_lower_knee_link" pos="0.04 0.008 0" quat="0.614893 6.38102e-07 -0.788611 -6.38102e-07">
+                        <inertial pos="-0.0775 0 0" mass="0.05" diaginertia="1e-12 1e-12 1e-12" />
+                        <!-- qpos[20] -->
+                        <joint name="bl_lower_knee_joint" pos="0 0 0" axis="0 1 0" /> <!-- Connect3 -->
+                        <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="bl_lower_knee_link" />
+                    </body>
+                </body>
+                <body name="br_upper_hip_link" pos="-0.1032 -0.11362 -0.031107" quat="0.923879 -8.23645e-08 -0.382684 3.41196e-08">
+                    <inertial pos="-0.054218 0 -1.793e-07" mass="0.05" diaginertia="1e-12 1e-12 1e-12" />
+                    <!-- qpos[21] ctrl[8]-->
+                    <joint name="motor_br_upper_hip_joint" pos="0 0 0" axis="0 -1 0" limited="true" range="-0.78 0.78" />
+                    <geom type="mesh" rgba="0.89804 0.91765 0.92941 1" mesh="br_upper_hip_link" />
+                    <body name="br_lower_hip_link" pos="-0.12 -0.0045 0" quat="-0.659159 -5.18349e-06 -0.752004 5.18349e-06">
+                        <inertial pos="0.11157 0.00011378 -0.034185" quat="-0.00095865 0.758091 0.000824677 0.652147" mass="0.05" diaginertia="9.59277e-06 9.59277e-06 9.59277e-06" />
+                        <!-- qpos[22] -->
+                        <joint name="br_lower_hip_joint" pos="0 0 0" axis="0 1 0" /> <!-- Connect4 -->
+                        <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="br_lower_hip_link" />
+                    </body>
+                </body>
+                <body name="br_upper_knee_link" pos="-0.0682 -0.11362 -0.031107" quat="0.819161 -7.30349e-08 0.573564 -5.11413e-08">
+                    <inertial pos="0.014638 0 0" mass="0.03" diaginertia="1e-12 1e-12 1e-12" />
+                    <!-- qpos[23] ctrl[9]-->
+                    <joint name="motor_br_upper_knee_joint" pos="0 0 0" axis="0 -1 0" limited="true" range="-1.22 1.22" />
+                    <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="br_upper_knee_link" />
+                    <body name="br_lower_knee_link" pos="0.04 -0.008 0" quat="0.614893 -6.38102e-07 -0.788611 6.38102e-07">
+                        <inertial pos="-0.0775 0 0" mass="0.05" diaginertia="1e-12 1e-12 1e-12" />
+                        <!-- qpos[24] -->
+                        <joint name="br_lower_knee_joint" pos="0 0 0" axis="0 1 0" /> <!-- Connect4 -->
+                        <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="br_lower_knee_link" />
+                    </body>
+                </body>
+            </body>
+        </body>
+    </worldbody>
+    <equality>
+      <connect body1="fl_lower_hip_link" body2="fl_lower_knee_link" anchor="0.034 -0.002 -0.024" active="true" solref="0.0 1" solimp="0.99 0.999 0.001"/>
+      <connect body1="fr_lower_hip_link" body2="fr_lower_knee_link" anchor="0.034 -0.002 -0.024" active="true" solref="0.0 1" solimp="0.99 0.999 0.001"/>
+      <connect body1="bl_lower_hip_link" body2="bl_lower_knee_link" anchor="0.034 -0.002 -0.024" active="true" solref="0.0 1" solimp="0.99 0.999 0.001"/>
+      <connect body1="br_lower_hip_link" body2="br_lower_knee_link" anchor="0.034 -0.002 -0.024" active="true" solref="0.0 1" solimp="0.99 0.999 0.001"/>
+    </equality>
+
+    <actuator>
+      <motor joint="motor_front_body_spine_joint" gear="2"/>
+      <motor joint="motor_fl_upper_hip_joint"/>
+      <motor joint="motor_fl_upper_knee_joint"/>
+      <motor joint="motor_fr_upper_hip_joint"/>
+      <motor joint="motor_fr_upper_knee_joint"/>
+      <motor joint="motor_back_body_spine_joint" gear="2"/>
+      <motor joint="motor_bl_upper_hip_joint"/>
+      <motor joint="motor_bl_upper_knee_joint"/>
+      <motor joint="motor_br_upper_hip_joint"/>
+      <motor joint="motor_br_upper_knee_joint"/>
+    </actuator>
+
+</mujoco>

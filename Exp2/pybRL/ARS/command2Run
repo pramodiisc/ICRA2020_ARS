@@ -1,0 +1,1 @@
+python ars_multi.py --lr 0.1 --noise 0.03 --logdir 1Nov20 --gait trot+turn --normal 0 --env Stoch2-v0 --action_dim 20 --obs_dim 14  --msg "Trot+Turn" --episode_length 12
