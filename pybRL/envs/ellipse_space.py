@@ -13,6 +13,7 @@ for pt in y:
     count = count + 1
 
 center = [0, -0.195]
+center = [0,0] # Need to change
 radius = 0.042
 thetas = np.arange(0, 2*np.pi, 0.001)
 x_circ = np.zeros(thetas.size)
@@ -37,7 +38,9 @@ final_y = np.concatenate([y, np.ones(x_bottom.size)*y[-1], y, np.ones(x_top.size
 
 plt.figure(1)
 
-plt.plot(final_x,final_y,'r', label = 'robot workspace')
+np.save("ellipsex.npy", x_circ)
+np.save("ellipsey.npy", y_circ)
+# plt.plot(final_x,final_y,'r', label = 'robot workspace')
 plt.plot(x_circ,y_circ,'g', label = 'robot trajectory')
 
 plt.legend()

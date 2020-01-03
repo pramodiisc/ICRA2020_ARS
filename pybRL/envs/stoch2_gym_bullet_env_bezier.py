@@ -12,6 +12,8 @@ import pybullet
 import pybRL.envs.bullet_client as bullet_client
 import pybullet_data
 import matplotlib.pyplot as plt
+from scipy.interpolate import interp1d
+
 INIT_POSITION = [0, 0, 0.29] 
 INIT_ORIENTATION = [0, 0, 0, 1]
 LEG_POSITION = ["fl_", "bl_", "fr_", "br_"]
@@ -466,8 +468,37 @@ class Stoch2Env(gym.Env):
                 self._pybullet_client.stepSimulation()           
         return 0
 
-
+    def apply_trajectory2d(self, x_traj, y_traj):
+        """
+        Provides an interface for testing, you can give external xy trajectories and see how the robot behaves, the trajectory should be 
+        centered at 0
+        """
+        r = (x_traj**2 + y_traj**2)**0.5
+        theta = np.arctan2(y_traj, x_traj)
+        theta = [constrain_theta(x) for x in theta]
+        print(max(theta), min(theta))
+        # print(theta)
+        # exit()
+        rfunc = interp1d(theta, r, bounds_error = False, fill_value = "extrapolate")
+        self._theta = 0
+        omega = 2 * np.pi * self._frequency
+        while True:
+            abd_m_angle_cmd, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.run_traj2d(self._theta,rfunc)   
+            self._theta = constrain_theta(omega * self.dt + self._theta)
+            qpos_act = np.array(self.GetMotorAngles())
+            m_angle_cmd_ext = np.array(leg_m_angle_cmd + abd_m_angle_cmd)
+            m_vel_cmd_ext = np.zeros(12)
+            for _ in range(self._frame_skip):
+                applied_motor_torque = self._apply_pd_control(m_angle_cmd_ext, m_vel_cmd_ext)
+                self._pybullet_client.stepSimulation()
+        pass
+    
+    def do_trajectory(self, ):
+        pass
 if(__name__ == "__main__"):
-    env = Stoch2Env(render=True, stairs = False)
-    for i in range(20):
-        env.step(np.zeros(18))
+    env = Stoch2Env(render=True, stairs = False, gait = 'trot')
+    x_traj = np.load("ellipsex.npy")
+    y_traj = np.load("ellipsey.npy")
+    env.apply_trajectory2d(x_traj, y_traj)
+
+    

@@ -201,6 +201,37 @@ class WalkingController():
         legs.back_right.motor_abduction]
         return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8) 
     
+    def run_traj2d(self, theta, rfunc):
+        """
+        Provides an interface to run trajectories given r as a function of theta
+        """
+        Legs = namedtuple('legs', 'front_right front_left back_right back_left')
+        legs = Legs(front_right = self.front_right, front_left = self.front_left, back_right = self.back_right, back_left = self.back_left)
+        self.update_leg_theta(theta)
+        for leg in legs:
+            y_center = -0.195
+            leg.r = rfunc(theta)
+            # print(leg.theta)
+            leg.x = leg.r * np.cos(leg.theta)
+            leg.y = leg.r * np.sin(leg.theta) + y_center
+            # leg.z = leg.r * np.cos(leg.gamma)*(1 - leg.b * np.cos(leg.theta))
+            # leg.z = np.abs(leg.z)
+            leg.motor_knee, leg.motor_hip, _, _ = self._inverse_stoch2(leg.x, leg.y, self._leg)
+            leg.motor_hip = leg.motor_hip + self.MOTOROFFSETS[0]
+            leg.motor_knee = leg.motor_knee + self.MOTOROFFSETS[1]
+            #-1 is also due to a coordinate difference
+            # leg.motor_abduction = constrain_abduction(np.arctan2(leg.z, -leg.y))
+            leg.motor_abduction = 0
+        leg_motor_angles = [legs.front_left.motor_hip, legs.front_left.motor_knee, legs.front_right.motor_hip, legs.front_right.motor_knee,
+        legs.back_left.motor_hip, legs.back_left.motor_knee, legs.back_right.motor_hip, legs.back_right.motor_knee]
+        leg_abduction_angles = [legs.front_left.motor_abduction, legs.front_right.motor_abduction, legs.back_left.motor_abduction,
+        legs.back_right.motor_abduction]
+        return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8) 
+    
+
+
+
+        pass
     def _inverse_stoch2(self, x,y,Leg):
 
         l1 =    Leg[0]
