@@ -201,16 +201,22 @@ class WalkingController():
         legs.back_right.motor_abduction]
         return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8) 
     
-    def run_traj2d(self, theta, rfunc):
+    def run_traj2d(self, theta, fl_rfunc, fr_rfunc, bl_rfunc, br_rfunc):
         """
         Provides an interface to run trajectories given r as a function of theta
         """
         Legs = namedtuple('legs', 'front_right front_left back_right back_left')
         legs = Legs(front_right = self.front_right, front_left = self.front_left, back_right = self.back_right, back_left = self.back_left)
+        
+        legs.front_left.rfunc = fl_rfunc
+        legs.front_right.rfunc = fr_rfunc
+        legs.back_left.rfunc = bl_rfunc
+        legs.back_right.rfunc = br_rfunc
+
         self.update_leg_theta(theta)
         for leg in legs:
             y_center = -0.195
-            leg.r = rfunc(theta)
+            leg.r = leg.rfunc(theta)
             # print(leg.theta)
             leg.x = leg.r * np.cos(leg.theta)
             leg.y = leg.r * np.sin(leg.theta) + y_center

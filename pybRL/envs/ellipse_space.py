@@ -22,7 +22,7 @@ count = 0
 # for every theta there is a max r, if I find that, then I can search the entire space
 #Need to  check and see if this works
 # for val in  x_max:
-x_axis = 0.042*2
+x_axis = 0.042*2 - 0.03
 y_axis = 0.042
 for theta in thetas:
     x_circ[count] = x_axis*np.cos(theta) + center[0]
@@ -38,6 +38,8 @@ final_y = np.concatenate([y, np.ones(x_bottom.size)*y[-1], y, np.ones(x_top.size
 
 plt.figure(1)
 
+traj = np.array([x_circ, y_circ])
+np.save("traj_br.npy", traj)
 np.save("ellipsex.npy", x_circ)
 np.save("ellipsey.npy", y_circ)
 # plt.plot(final_x,final_y,'r', label = 'robot workspace')

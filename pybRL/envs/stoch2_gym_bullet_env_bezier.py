@@ -468,22 +468,19 @@ class Stoch2Env(gym.Env):
                 self._pybullet_client.stepSimulation()           
         return 0
 
-    def apply_trajectory2d(self, x_traj, y_traj):
+    def apply_trajectory2d(self, fl_traj, fr_traj, bl_traj, br_traj):
         """
         Provides an interface for testing, you can give external xy trajectories and see how the robot behaves, the trajectory should be 
-        centered at 0
+        centered at 0. Provide trajectory for fl, fr, bl, br in that order
         """
-        r = (x_traj**2 + y_traj**2)**0.5
-        theta = np.arctan2(y_traj, x_traj)
-        theta = [constrain_theta(x) for x in theta]
-        print(max(theta), min(theta))
-        # print(theta)
-        # exit()
-        rfunc = interp1d(theta, r, bounds_error = False, fill_value = "extrapolate")
+        fl_rfunc = interp1d([constrain_theta(x) for x in np.arctan2(fl_traj[1], fl_traj[0])], (fl_traj[0]**2 + fl_traj[1]**2)**0.5, bounds_error = False, fill_value = "extrapolate")
+        fr_rfunc = interp1d([constrain_theta(x) for x in np.arctan2(fr_traj[1], fr_traj[0])], (fr_traj[0]**2 + fr_traj[1]**2)**0.5, bounds_error = False, fill_value = "extrapolate")
+        bl_rfunc = interp1d([constrain_theta(x) for x in np.arctan2(bl_traj[1], bl_traj[0])], (bl_traj[0]**2 + bl_traj[1]**2)**0.5, bounds_error = False, fill_value = "extrapolate")
+        br_rfunc = interp1d([constrain_theta(x) for x in np.arctan2(br_traj[1], br_traj[0])], (br_traj[0]**2 + br_traj[1]**2)**0.5, bounds_error = False, fill_value = "extrapolate")
         self._theta = 0
         omega = 2 * np.pi * self._frequency
         while True:
-            abd_m_angle_cmd, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.run_traj2d(self._theta,rfunc)   
+            abd_m_angle_cmd, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.run_traj2d(self._theta,fl_rfunc, fr_rfunc, bl_rfunc, br_rfunc)   
             self._theta = constrain_theta(omega * self.dt + self._theta)
             qpos_act = np.array(self.GetMotorAngles())
             m_angle_cmd_ext = np.array(leg_m_angle_cmd + abd_m_angle_cmd)
@@ -497,8 +494,11 @@ class Stoch2Env(gym.Env):
         pass
 if(__name__ == "__main__"):
     env = Stoch2Env(render=True, stairs = False, gait = 'trot')
-    x_traj = np.load("ellipsex.npy")
-    y_traj = np.load("ellipsey.npy")
-    env.apply_trajectory2d(x_traj, y_traj)
+    traj_fl = np.load("traj_fl.npy")
+    traj_fr = np.load("traj_fr.npy")
+    traj_bl = np.load("traj_bl.npy")
+    traj_br = np.load("traj_br.npy")
+
+    env.apply_trajectory2d(traj_fl, traj_fr, traj_bl, traj_br)
 
     
