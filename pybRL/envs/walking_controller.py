@@ -232,12 +232,8 @@ class WalkingController():
         legs.back_left.motor_hip, legs.back_left.motor_knee, legs.back_right.motor_hip, legs.back_right.motor_knee]
         leg_abduction_angles = [legs.front_left.motor_abduction, legs.front_right.motor_abduction, legs.back_left.motor_abduction,
         legs.back_right.motor_abduction]
-        return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8) 
-    
+        return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8)     
 
-
-
-        pass
     def _inverse_stoch2(self, x,y,Leg):
 
         l1 =    Leg[0]
@@ -313,6 +309,14 @@ class WalkingController():
 
         return [q1,q2]
 
+    def _inverse_3D(self, x, y, z, Leg):
+        theta = np.arctan2(z,-y)
+        rot_matrix = np.array([[1,0,0],[0, np.cos(theta), np.sin(theta)],[0,-np.sin(theta), np.cos(theta)]])
+        new_coords = rot_matrix@np.array([x,-y,z])
+        print(new_coords)
+        motor_knee, motor_hip, _, _ = self._inverse_stoch2(new_coords[0], -new_coords[1], Leg)
+        return [motor_knee, motor_hip, theta]
+
 def constrain_abduction(angle):
     if(angle < 0):
         angle = 0
@@ -323,20 +327,25 @@ def constrain_abduction(angle):
 if(__name__ == "__main__"):
     # action = np.array([ 0.24504616, -0.11582746,  0.71558934, -0.46091432, -0.36284493,  0.00495828, -0.06466855, -0.45247894,  0.72117291, -0.11068088])
 
-    walkcon = WalkingController(planning_space="polar_task_space", phase=[PI,0,0,PI])
-    theta = 0
-    action = np.zeros(10)
-    action = (np.array([0.02505827, 0.02429368, 0.02302543, 0.02367982, 0.02349182, 0.02434083,
- 0.02467802, 0.02330308, 0.02460212, 0.02392253]) - np.ones(10)*0.024 ) * 1/0.024
+    walkcon = WalkingController(phase=[PI,0,0,PI])
+    x= 0.1
+    y = -0.195
+    z = -0.1
+    print(walkcon._inverse_3D(x,y,z, walkcon._leg))
+    print(walkcon._inverse_stoch2(x,y,walkcon._leg))
 
-    x1 = []
-    y1 = []
-    while(theta < 2*PI):
-        _ , leg_motor_angles, _, _, data = walkcon.transform_action_to_motor_joint_command3(theta, action)
-        x1.append(data[0])
-        y1.append(data[1])
-        theta = theta + 2*PI/100
-    
+#     theta = 0
+#     action = np.zeros(10)
+#     action = (np.array([0.02505827, 0.02429368, 0.02302543, 0.02367982, 0.02349182, 0.02434083,
+#  0.02467802, 0.02330308, 0.02460212, 0.02392253]) - np.ones(10)*0.024 ) * 1/0.024
+
+#     x1 = []
+#     y1 = []     while(theta < 2*PI):
+#     _ , leg_motor_angles, _, _, data = walkcon.transform_action_to_motor_joint_command3(theta, action)
+#     x1.append(data[0])
+#     y1.append(data[1])
+#     theta = theta + 2*PI/100
+
 #     plt.figure()
 #     plt.plot(x1, y1)
 #     plt.show()
