@@ -39,10 +39,10 @@ final_y = np.concatenate([y, np.ones(x_bottom.size)*y[-1], y, np.ones(x_top.size
 plt.figure(1)
 
 traj = np.array([x_circ, y_circ])
-np.save("traj_br.npy", traj)
-np.save("ellipsex.npy", x_circ)
-np.save("ellipsey.npy", y_circ)
-# plt.plot(final_x,final_y,'r', label = 'robot workspace')
+# np.save("traj_br.npy", traj)
+# np.save("ellipsex.npy", x_circ)
+# np.save("ellipsey.npy", y_circ)
+plt.plot(final_x,final_y,'r', label = 'robot workspace')
 plt.plot(x_circ,y_circ,'g', label = 'robot trajectory')
 
 plt.legend()

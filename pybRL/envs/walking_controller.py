@@ -203,36 +203,42 @@ class WalkingController():
     
     def run_traj2d(self, theta, fl_rfunc, fr_rfunc, bl_rfunc, br_rfunc):
         """
-        Provides an interface to run trajectories given r as a function of theta
+        Provides an interface to run trajectories given r as a function of theta and abduction angles
         """
         Legs = namedtuple('legs', 'front_right front_left back_right back_left')
         legs = Legs(front_right = self.front_right, front_left = self.front_left, back_right = self.back_right, back_left = self.back_left)
         
-        legs.front_left.rfunc = fl_rfunc
-        legs.front_right.rfunc = fr_rfunc
-        legs.back_left.rfunc = bl_rfunc
-        legs.back_right.rfunc = br_rfunc
+        legs.front_left.rfunc = fl_rfunc[0]
+        legs.front_right.rfunc = fr_rfunc[0]
+        legs.back_left.rfunc = bl_rfunc[0]
+        legs.back_right.rfunc = br_rfunc[0]
+
+        legs.front_left.phi = fl_rfunc[1]
+        legs.front_right.phi = fr_rfunc[1]
+        legs.back_left.phi = bl_rfunc[1]
+        legs.back_right.phi = br_rfunc[1]
 
         self.update_leg_theta(theta)
         for leg in legs:
             y_center = -0.195
             leg.r = leg.rfunc(theta)
             # print(leg.theta)
-            leg.x = leg.r * np.cos(leg.theta)
-            leg.y = leg.r * np.sin(leg.theta) + y_center
+            x = leg.r * np.cos(leg.theta)
+            y = leg.r * np.sin(leg.theta) + y_center
+            leg.x, leg.y, leg.z = np.array([[np.cos(leg.phi),0,np.sin(leg.phi)],[0,1,0],[-np.sin(leg.phi),0, np.cos(leg.phi)]])@np.array([x,y,0])
             # leg.z = leg.r * np.cos(leg.gamma)*(1 - leg.b * np.cos(leg.theta))
             # leg.z = np.abs(leg.z)
-            leg.motor_knee, leg.motor_hip, _, _ = self._inverse_stoch2(leg.x, leg.y, self._leg)
+            leg.motor_knee, leg.motor_hip,leg.motor_abduction = self._inverse_3D(leg.x, leg.y, leg.z, self._leg)
             leg.motor_hip = leg.motor_hip + self.MOTOROFFSETS[0]
             leg.motor_knee = leg.motor_knee + self.MOTOROFFSETS[1]
             #-1 is also due to a coordinate difference
             # leg.motor_abduction = constrain_abduction(np.arctan2(leg.z, -leg.y))
-            leg.motor_abduction = 0
         leg_motor_angles = [legs.front_left.motor_hip, legs.front_left.motor_knee, legs.front_right.motor_hip, legs.front_right.motor_knee,
         legs.back_left.motor_hip, legs.back_left.motor_knee, legs.back_right.motor_hip, legs.back_right.motor_knee]
         leg_abduction_angles = [legs.front_left.motor_abduction, legs.front_right.motor_abduction, legs.back_left.motor_abduction,
         legs.back_right.motor_abduction]
-        return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8)     
+        return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8) 
+    
 
     def _inverse_stoch2(self, x,y,Leg):
 
@@ -311,8 +317,7 @@ class WalkingController():
 
     def _inverse_3D(self, x, y, z, Leg):
         theta = np.arctan2(z,-y)
-        rot_matrix = np.array([[1,0,0],[0, np.cos(theta), np.sin(theta)],[0,-np.sin(theta), np.cos(theta)]])
-        new_coords = rot_matrix@np.array([x,-y,z])
+        new_coords = np.array([x,-y/np.cos(theta),z])
         print(new_coords)
         motor_knee, motor_hip, _, _ = self._inverse_stoch2(new_coords[0], -new_coords[1], Leg)
         return [motor_knee, motor_hip, theta]
@@ -328,9 +333,9 @@ if(__name__ == "__main__"):
     # action = np.array([ 0.24504616, -0.11582746,  0.71558934, -0.46091432, -0.36284493,  0.00495828, -0.06466855, -0.45247894,  0.72117291, -0.11068088])
 
     walkcon = WalkingController(phase=[PI,0,0,PI])
-    x= 0.1
+    x= 0.4
     y = -0.195
-    z = -0.1
+    z = -0
     print(walkcon._inverse_3D(x,y,z, walkcon._leg))
     print(walkcon._inverse_stoch2(x,y,walkcon._leg))
 

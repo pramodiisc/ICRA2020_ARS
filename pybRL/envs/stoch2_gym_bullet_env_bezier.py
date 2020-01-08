@@ -468,7 +468,7 @@ class Stoch2Env(gym.Env):
                 self._pybullet_client.stepSimulation()           
         return 0
 
-    def apply_trajectory2d(self, fl_traj, fr_traj, bl_traj, br_traj):
+    def apply_trajectory2d(self, fl_traj, fr_traj, bl_traj, br_traj, fl_phi, fr_phi, bl_phi, br_phi):
         """
         Provides an interface for testing, you can give external xy trajectories and see how the robot behaves, the trajectory should be 
         centered at 0. Provide trajectory for fl, fr, bl, br in that order
@@ -480,7 +480,8 @@ class Stoch2Env(gym.Env):
         self._theta = 0
         omega = 2 * np.pi * self._frequency
         while True:
-            abd_m_angle_cmd, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.run_traj2d(self._theta,fl_rfunc, fr_rfunc, bl_rfunc, br_rfunc)   
+            abd_m_angle_cmd, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.run_traj2d(self._theta,
+            [fl_rfunc,fl_phi], [fr_rfunc, fr_phi], [bl_rfunc, bl_phi], [br_rfunc, br_phi])   
             self._theta = constrain_theta(omega * self.dt + self._theta)
             qpos_act = np.array(self.GetMotorAngles())
             m_angle_cmd_ext = np.array(leg_m_angle_cmd + abd_m_angle_cmd)
@@ -493,12 +494,73 @@ class Stoch2Env(gym.Env):
     def do_trajectory(self, ):
         pass
 if(__name__ == "__main__"):
-    env = Stoch2Env(render=True, stairs = False, gait = 'trot')
-    traj_fl = np.load("traj_fl.npy")
-    traj_fr = np.load("traj_fr.npy")
-    traj_bl = np.load("traj_bl.npy")
-    traj_br = np.load("traj_br.npy")
+    # env = Stoch2Env(render=True, stairs = False,on_rack=False, gait = 'trot')
+    # traj_fl = np.load("traj_fl.npy")
+    # traj_fr = np.load("traj_fr.npy")
+    # traj_bl = np.load("traj_bl.npy")
+    # traj_br = np.load("traj_br.npy")
 
-    env.apply_trajectory2d(traj_fl, traj_fr, traj_bl, traj_br)
+    # env.apply_trajectory2d(traj_fl, traj_fr, traj_bl, traj_br, PI/6, -PI/6, -PI/6, PI/6)
 
+    body_width = .24
+    body_length = .37
+    radius = .60 
     
+    fr_phi = -np.arctan2(body_length/2, radius - body_width/2)
+    br_phi = np.arctan2(body_length/2, radius + body_width/2)
+    fl_phi = np.arctan2(body_length/2, radius - body_width/2)
+    bl_phi = -np.arctan2(body_length/2, radius - body_width/2)
+
+    step_length = 0.084
+    y_axis = 0.042
+    fr_xaxis = 0.084* (radius - body_width/2)/radius
+    fl_xaxis = 0.084* (radius + body_width/2)/radius
+    br_xaxis = 0.084* (radius - body_width/2)/radius
+    bl_xaxis = 0.084* (radius + body_width/2)/radius
+
+    thetas = np.arange(0, 2*np.pi, 0.001)
+    fr_traj = np.zeros([2,thetas.size])
+    fl_traj = np.zeros([2,thetas.size])
+    br_traj = np.zeros([2,thetas.size])
+    bl_traj = np.zeros([2,thetas.size])
+    count = 0
+    center = [0.0, 0.0]
+    yaxis = 0.042
+    for theta in thetas:
+        fr_traj[0,count] = fr_xaxis*np.cos(theta) + center[0]
+        fr_traj[1,count] = yaxis*np.sin(theta) + center[1]
+
+        fl_traj[0,count] = fl_xaxis*np.cos(theta) + center[0]
+        fl_traj[1,count] = yaxis*np.sin(theta) + center[1]
+
+        br_traj[0,count] = br_xaxis*np.cos(theta) + center[0]
+        br_traj[1,count] = yaxis*np.sin(theta) + center[1]
+
+        bl_traj[0,count] = bl_xaxis*np.cos(theta) + center[0]
+        bl_traj[1,count] = yaxis*np.sin(theta) + center[1]
+        count = count + 1
+    
+    # plt.figure(1)
+    # plt.plot(fr_traj[0],fr_traj[1],'r', label = 'fr')
+    # plt.plot(fl_traj[0],fl_traj[1],'g', label = 'fl')
+    # plt.plot(br_traj[0],br_traj[1],'b', label = 'br')
+    # plt.plot(bl_traj[0],bl_traj[1],'y', label = 'bl')
+    # plt.legend()
+    # plt.show()
+    env = Stoch2Env(render=True, stairs = False,on_rack=False, gait = 'trot')
+    env.apply_trajectory2d(fl_traj, fr_traj, bl_traj, br_traj, fl_phi, fr_phi, bl_phi, br_phi)
+
+
+
+    #body_width = 24cm
+    #body_length = 37cm
+
+    #smallest circle radius = 30
+    #highest circle radius  = infinity
+
+    #max step length = 22cm
+    #min step length = 0 
+
+    #v/r = v+vo/r+w/2 = v+vi/r-w/2 * (r-w/2)/r * step length, (r+w/2)/r * step length
+
+    # 24/30 36/30* step length
