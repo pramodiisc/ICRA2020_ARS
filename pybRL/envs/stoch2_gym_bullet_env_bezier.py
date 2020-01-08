@@ -504,7 +504,7 @@ if(__name__ == "__main__"):
 
     body_width = .24
     body_length = .37
-    radius = .60 
+    radius = .50 
     
     fr_phi = -np.arctan2(body_length/2, radius - body_width/2)
     br_phi = np.arctan2(body_length/2, radius + body_width/2)
