@@ -96,7 +96,7 @@ class WalkingController():
         self._pt2 = np.array([0.1, -0.22])
         self._pt3 = np.array([0.065, -0.15])
         #New calculation
-        self._pts = np.array([[-0.068,-0.243],[-0.115,-0.243],[-0.065,-0.145],[0.065,-0.145],[0.115,-0.243],[0.068,-0.243]])
+        self._pts = np.array([[-0.068,-0.24],[-0.115,-0.24],[-0.065,-0.145],[0.065,-0.145],[0.115,-0.24],[0.068,-0.24]])
     
     def set_b_value(self):
         if(self.gait == "trot" or self.gait == "bound" or self.gait == "walk"):
@@ -350,7 +350,7 @@ class WalkingController():
 
     def _inverse_3D(self, x, y, z, Leg):
         theta = np.arctan2(z,-y)
-        new_coords = np.array([x,-y/np.cos(theta),z])
+        new_coords = np.array([x,-y/np.cos(theta) - 0.035,z])
         # print(new_coords)
         motor_knee, motor_hip, _, _ = self._inverse_stoch2(new_coords[0], -new_coords[1], Leg)
         return [motor_knee, motor_hip, theta]
