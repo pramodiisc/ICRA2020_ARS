@@ -47,47 +47,115 @@ plt.plot(final_x,final_y,'r', label = 'robot workspace')
 
 #Converting action to curve
 
-action = [0,0,-1,1,1,-1]
+# action = [0.5,0.5,0,0,0,0]
 
-pt0 = np.array([-0.1, -0.22])
-pt1 = np.array([-0.065, -0.15])
+# pt0 = np.array([-0.1, -0.22])
+# pt1 = np.array([-0.065, -0.15])
 
-pt2 = np.array([0.1, -0.22])
-pt3 = np.array([0.065, -0.15])
+# pt2 = np.array([0.1, -0.22])
+# pt3 = np.array([0.065, -0.15])
 
-bezpt1 = pt0 + ((action[0]+1)/2)*(pt1-pt0)
-bezpt2 = pt2 + ((action[1]+1)/2)*(pt3-pt2)
+# bezpt1 = pt0 + ((action[0]+1)/2)*(pt1-pt0)
+# bezpt2 = pt2 + ((action[1]+1)/2)*(pt3-pt2)
 
-bezwt1 = (action[2] + 1)/2 + 0.001
-bezwt2 = (action[3] + 1)/2 + 0.001
-bezwt3 = (action[4] + 1)/2 + 0.001
-bezwt4 = (action[5] + 1)/2 + 0.001
+# bezwt1 = (action[2] + 1)/2 + 0.001
+# bezwt2 = (action[3] + 1)/2 + 0.001
+# bezwt3 = (action[4] + 1)/2 + 0.001
+# bezwt4 = (action[5] + 1)/2 + 0.001
 
-thetas = np.arange(0, 2*np.pi, 0.001)
-tau = thetas/(2*np.pi)
-x_w = [-0.04, bezpt1[0], bezpt2[0], 0.04]
-y_w = [-0.243, bezpt1[1], bezpt2[1], -0.243]
-r = [bezwt1, bezwt2, bezwt3, bezwt4]
-x = np.zeros(tau.size)
-y = np.zeros(tau.size)
+# thetas = np.arange(0, 2*np.pi, 0.001)
+# tau = thetas/(np.pi)
+# x_w = [-0.068, bezpt1[0], bezpt2[0], 0.068]
+# y_w = [-0.243, bezpt1[1], bezpt2[1], -0.243]
+# r = [bezwt1, bezwt2, bezwt3, bezwt4]
+# x = np.zeros(tau.size)
+# y = np.zeros(tau.size)
+# count = 0
+# for t in tau:
+#     if(t<=1):
+#         f = [((1-t)**3)*r[0], 3*t*((1-t)**2)*r[1],3*(1-t)*(t**2)*r[2], (t**3)*r[3]]
+#         basis = f[0] + f[1] + f[2] + f[3]
+#         x[count] = (x_w[0]*f[0] + x_w[1]*f[1]+x_w[2]*f[2]+x_w[3]*f[3])/basis
+#         y[count] = (y_w[0]*f[0]+  y_w[1]*f[1]+y_w[2]*f[2]+y_w[3]*f[3])/basis  
+#     if(t>1):
+#         x[count] = x_w[3] + (t-1)*(x_w[0] - x_w[3])
+#         y[count]= -0.243
+#     count = count + 1
+
+
+# plt.scatter(pt0[0], pt0[1], label = 'bezier edge pt 0')
+# plt.scatter(pt1[0], pt1[1], label = 'bezier edge pt 1')
+# plt.scatter(pt2[0], pt2[1], label = 'bezier edge pt 2')
+# plt.scatter(pt3[0], pt3[1], label = 'bezier edge pt 3')
+
+# plt.scatter(bezpt1[0], bezpt1[1], label = 'bezier pt 1')
+# plt.scatter(bezpt2[0], bezpt2[1], label = 'bezier pt 2')
+# plt.plot(x,y,'g', label = 'robot trajectory')
+
+
+
+
+#Bezier Spline
+
+# pt0 = np.array([-0.113, -0.242])
+# pt1 = np.array([-0.065, -0.15])
+
+# pt2 = np.array([0.113, -0.242])
+# pt3 = np.array([0.065, -0.15])
+# bezpt1 = pt0 + 0.6*(pt1-pt0)
+# bezpt2 = pt2 + 0.6*(pt3-pt2) 
+# x_w = [-0.068, bezpt1[0], bezpt2[0], 0.068]
+# y_w = [-0.243, bezpt1[1], bezpt2[1], -0.243]
+
+
+# plt.scatter(pt0[0], pt0[1], label = 'bezier edge pt 0')
+# plt.scatter(pt1[0], pt1[1], label = 'bezier edge pt 1')
+# plt.scatter(pt2[0], pt2[1], label = 'bezier edge pt 2')
+# plt.scatter(pt3[0], pt3[1], label = 'bezier edge pt 3')
+
+# plt.scatter(bezpt1[0], bezpt1[1], label = 'bezier pt 1')
+# plt.scatter(bezpt2[0], bezpt2[1], label = 'bezier pt 2')
+
+# plt.legend()
+action =np.array([-0.5,1,1,1,1,1])
+weights = (action+1)/2 + 1e-3 # TO prevent 0 from occuring we add 1e-3
+points = np.array([[-0.068,-0.243],[-0.115,-0.243],[-0.065,-0.145],[0.065,-0.145],[0.115,-0.243],[0.068,-0.243]])
+# weights = np.array([0.01,0.01,1,0,1,1])
+def drawBezier(points, weights, t):
+    newpoints = np.zeros(points.shape)
+    def drawCurve(points, weights, t):
+        # print("ent1")
+        if(points.shape[0]==1):
+            return [points[0,0]/weights[0], points[0,1]/weights[0]]
+        else:
+            newpoints=np.zeros([points.shape[0]-1, points.shape[1]])
+            newweights=np.zeros(weights.size)
+            for i in np.arange(newpoints.shape[0]):
+                x = (1-t) * points[i,0] + t * points[i+1,0]
+                y = (1-t) * points[i,1] + t * points[i+1,1]
+                w = (1-t) * weights[i] + t*weights[i+1]
+                newpoints[i,0] = x
+                newpoints[i,1] = y
+                newweights[i] = w
+            #   print(newpoints, newweights)
+            # print("end")
+            return drawCurve(newpoints, newweights, t)
+    for i in np.arange(points.shape[0]):
+        newpoints[i]=points[i]*weights[i]
+        # print(newpoints[i])
+    # print("entered")
+    if(t<=1):
+        return drawCurve(newpoints, weights, t)
+    if(t>1):
+        return [points[-1,0]+ (t-1)*(points[0,0] - points[-1,0]), -0.243]
+x= np.zeros(200)
+y =np.zeros(200)
 count = 0
-for t in tau:
-    f = [((1-t)**3)*r[0], 3*t*((1-t)**2)*r[1],3*(1-t)*(t**2)*r[2], (t**3)*r[3]]
-    basis = f[0] + f[1] + f[2] + f[3]
-    x[count] = (x_w[0]*f[0] + x_w[1]*f[1]+x_w[2]*f[2]+x_w[3]*f[3])/basis
-    y[count] = (y_w[0]*f[0]+  y_w[1]*f[1]+y_w[2]*f[2]+y_w[3]*f[3])/basis  
-    count = count + 1
-
-plt.scatter(pt0[0], pt0[1], label = 'bezier edge pt 0')
-plt.scatter(pt1[0], pt1[1], label = 'bezier edge pt 1')
-plt.scatter(pt2[0], pt2[1], label = 'bezier edge pt 2')
-plt.scatter(pt3[0], pt3[1], label = 'bezier edge pt 3')
-
-plt.scatter(bezpt1[0], bezpt1[1], label = 'bezier pt 1')
-plt.scatter(bezpt2[0], bezpt2[1], label = 'bezier pt 2')
+print(drawBezier(points,weights,1.1))
+for t in np.arange(0,2, 0.01):
+    x[count], y[count] = drawBezier(points,weights, t)
+    count = count+1
+# print(x)
 plt.plot(x,y,'g', label = 'robot trajectory')
-
-
-
-plt.legend()
 plt.show()
+

@@ -50,6 +50,7 @@ class Stoch2Env(gym.Env):
         self._theta0 = 0
         self._update_action_every = 1.  # update is every 50% of the step i.e., theta goes from 0 to pi/2
         self._frequency = -2.8 #change back to 1
+        # self._frequency = 2.8 #change back to 1
         self._kp = 20
         self._kd = 2
         self.dt = 0.001
@@ -143,7 +144,7 @@ class Stoch2Env(gym.Env):
         return ob, reward,False, ang_data
 
     def do_simulation(self, action, n_frames, callback=None):
-        omega = 2 * np.pi * self._frequency
+        omega = 2 * np.pi * self._frequency * -1 #Maybe remove later
         energy_spent_per_step = 0
         self.action = action
         cost_reference = 0
@@ -151,8 +152,9 @@ class Stoch2Env(gym.Env):
         angle_data = []
         counter = 0
         while(np.abs(omega*self.dt*counter) <= np.pi * self._update_action_every):
-            abd_m_angle_cmd, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.transform_action_to_motor_joint_command3(self._theta,action)   
+            abd_m_angle_cmd, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.transform_action_to_motor_joint_command_bezier(self._theta,action)   
             self._theta = constrain_theta(omega * self.dt + self._theta)
+            # print(self._theta/PI)
             qpos_act = np.array(self.GetMotorAngles())
             m_angle_cmd_ext = np.array(leg_m_angle_cmd + abd_m_angle_cmd)
             m_vel_cmd_ext = np.zeros(12)
@@ -480,6 +482,7 @@ class Stoch2Env(gym.Env):
         self._theta = 0
         omega = 2 * np.pi * self._frequency
         while True:
+            print(self._theta/PI)
             abd_m_angle_cmd, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.run_traj2d(self._theta,
             [fl_rfunc,fl_phi], [fr_rfunc, fr_phi], [bl_rfunc, bl_phi], [br_rfunc, br_phi])   
             self._theta = constrain_theta(omega * self.dt + self._theta)
@@ -502,44 +505,46 @@ if(__name__ == "__main__"):
 
     # env.apply_trajectory2d(traj_fl, traj_fr, traj_bl, traj_br, PI/6, -PI/6, -PI/6, PI/6)
 
-    body_width = .24
-    body_length = .37
-    radius = .50 
+    # body_width = .24
+    # body_length = .37
+    # radius = .50 
     
-    fr_phi = -np.arctan2(body_length/2, radius - body_width/2)
-    br_phi = np.arctan2(body_length/2, radius + body_width/2)
-    fl_phi = np.arctan2(body_length/2, radius - body_width/2)
-    bl_phi = -np.arctan2(body_length/2, radius - body_width/2)
+    # fr_phi = -np.arctan2(body_length/2, radius - body_width/2)
+    # br_phi = np.arctan2(body_length/2, radius - body_width/2)
+    # fl_phi = np.arctan2(body_length/2, radius + body_width/2)
+    # bl_phi = -np.arctan2(body_length/2, radius + body_width/2)
 
-    step_length = 0.084
-    y_axis = 0.042
-    fr_xaxis = 0.084* (radius - body_width/2)/radius
-    fl_xaxis = 0.084* (radius + body_width/2)/radius
-    br_xaxis = 0.084* (radius - body_width/2)/radius
-    bl_xaxis = 0.084* (radius + body_width/2)/radius
+    # step_length = 0.084
+    # y_axis = 0.042
+    # fr_xaxis = 0.084* (radius - body_width/2)/radius
+    # fl_xaxis = 0.084* (radius + body_width/2)/radius
+    # br_xaxis = 0.084* (radius - body_width/2)/radius
+    # bl_xaxis = 0.084* (radius + body_width/2)/radius
 
-    thetas = np.arange(0, 2*np.pi, 0.001)
-    fr_traj = np.zeros([2,thetas.size])
-    fl_traj = np.zeros([2,thetas.size])
-    br_traj = np.zeros([2,thetas.size])
-    bl_traj = np.zeros([2,thetas.size])
-    count = 0
-    center = [0.0, 0.0]
-    yaxis = 0.042
-    for theta in thetas:
-        fr_traj[0,count] = fr_xaxis*np.cos(theta) + center[0]
-        fr_traj[1,count] = yaxis*np.sin(theta) + center[1]
+    # thetas = np.arange(0, 2*np.pi, 0.001)
+    # fr_traj = np.zeros([2,thetas.size])
+    # fl_traj = np.zeros([2,thetas.size])
+    # br_traj = np.zeros([2,thetas.size])
+    # bl_traj = np.zeros([2,thetas.size])
+    # count = 0
+    # center = [0.0, 0.0]
+    # yaxis = 0.042
+    # for theta in thetas:
+    #     fr_traj[0,count] = fr_xaxis*np.cos(theta) + center[0]
+    #     fr_traj[1,count] = yaxis*np.sin(theta) + center[1]
 
-        fl_traj[0,count] = fl_xaxis*np.cos(theta) + center[0]
-        fl_traj[1,count] = yaxis*np.sin(theta) + center[1]
+    #     fl_traj[0,count] = fl_xaxis*np.cos(theta) + center[0]
+    #     fl_traj[1,count] = yaxis*np.sin(theta) + center[1]
 
-        br_traj[0,count] = br_xaxis*np.cos(theta) + center[0]
-        br_traj[1,count] = yaxis*np.sin(theta) + center[1]
+    #     br_traj[0,count] = br_xaxis*np.cos(theta) + center[0]
+    #     br_traj[1,count] = yaxis*np.sin(theta) + center[1]
 
-        bl_traj[0,count] = bl_xaxis*np.cos(theta) + center[0]
-        bl_traj[1,count] = yaxis*np.sin(theta) + center[1]
-        count = count + 1
-    
+    #     bl_traj[0,count] = bl_xaxis*np.cos(theta) + center[0]
+    #     bl_traj[1,count] = yaxis*np.sin(theta) + center[1]
+    #     count = count + 1
+    # env = Stoch2Env(render=True, stairs = False,on_rack=False, gait = 'trot')
+    # env.apply_trajectory2d(fl_traj, fr_traj, bl_traj, br_traj, fl_phi, fr_phi, bl_phi, br_phi)
+
     # plt.figure(1)
     # plt.plot(fr_traj[0],fr_traj[1],'r', label = 'fr')
     # plt.plot(fl_traj[0],fl_traj[1],'g', label = 'fl')
@@ -548,8 +553,9 @@ if(__name__ == "__main__"):
     # plt.legend()
     # plt.show()
     env = Stoch2Env(render=True, stairs = False,on_rack=False, gait = 'trot')
-    env.apply_trajectory2d(fl_traj, fr_traj, bl_traj, br_traj, fl_phi, fr_phi, bl_phi, br_phi)
-
+    action = [1,1,1,1,1,1,-0.3]
+    for i in range(1000):
+        env.step(action)
 
 
     #body_width = 24cm

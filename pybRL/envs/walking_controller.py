@@ -32,6 +32,7 @@ class leg_data:
     phi : float = 0.0
     gamma : float = 0.0
     b: float = 1.0
+    step_length: float = 0.0
 @dataclass
 class robot_data:
     front_right : leg_data = leg_data('fr')
@@ -83,10 +84,19 @@ class WalkingController():
         self._leg = leg
         self.gamma = 0
         self.MOTOROFFSETS = [2.3562,1.2217]
+        self.body_width = 0.24
+        self.body_length = 0.37
         self.gait = gait_type
         self.set_b_value()
         self.set_gamma_value()
         self.set_leg_gamma()
+        #Below: Bezier Pt Calculation
+        self._pt0 = np.array([-0.1, -0.22])
+        self._pt1 = np.array([-0.065, -0.15])
+        self._pt2 = np.array([0.1, -0.22])
+        self._pt3 = np.array([0.065, -0.15])
+        #New calculation
+        self._pts = np.array([[-0.068,-0.243],[-0.115,-0.243],[-0.065,-0.145],[0.065,-0.145],[0.115,-0.243],[0.068,-0.243]])
     
     def set_b_value(self):
         if(self.gait == "trot" or self.gait == "bound" or self.gait == "walk"):
@@ -201,6 +211,29 @@ class WalkingController():
         legs.back_right.motor_abduction]
         return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8) 
     
+    def transform_action_to_motor_joint_command_bezier(self, theta, action):
+        Legs = namedtuple('legs', 'front_right front_left back_right back_left')
+        legs = Legs(front_right = self.front_right, front_left = self.front_left, back_right = self.back_right, back_left = self.back_left)
+        radius = action[-1]
+        step_length = 0.068*2
+        self._update_leg_phi(radius)
+        self._update_leg_step_length(step_length, radius)
+        self.update_leg_theta(theta)
+        for leg in legs:
+            tau = leg.theta/PI
+            weights = (np.array(action)+1)/2
+            weights = weights[:-1]
+            x,y = self.drawBezier(self._pts, weights, tau)
+            leg.x, leg.y, leg.z = np.array([[np.cos(leg.phi),0,np.sin(leg.phi)],[0,1,0],[-np.sin(leg.phi),0, np.cos(leg.phi)]])@np.array([x,y,0])
+            leg.motor_knee, leg.motor_hip,leg.motor_abduction = self._inverse_3D(leg.x, leg.y, leg.z, self._leg)
+            leg.motor_hip = leg.motor_hip + self.MOTOROFFSETS[0]
+            leg.motor_knee = leg.motor_knee + self.MOTOROFFSETS[1]
+        
+        leg_motor_angles = [legs.front_left.motor_hip, legs.front_left.motor_knee, legs.front_right.motor_hip, legs.front_right.motor_knee,
+        legs.back_left.motor_hip, legs.back_left.motor_knee, legs.back_right.motor_hip, legs.back_right.motor_knee]
+        leg_abduction_angles = [legs.front_left.motor_abduction, legs.front_right.motor_abduction, legs.back_left.motor_abduction,
+        legs.back_right.motor_abduction]
+        return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8)
     def run_traj2d(self, theta, fl_rfunc, fr_rfunc, bl_rfunc, br_rfunc):
         """
         Provides an interface to run trajectories given r as a function of theta and abduction angles
@@ -318,9 +351,63 @@ class WalkingController():
     def _inverse_3D(self, x, y, z, Leg):
         theta = np.arctan2(z,-y)
         new_coords = np.array([x,-y/np.cos(theta),z])
-        print(new_coords)
+        # print(new_coords)
         motor_knee, motor_hip, _, _ = self._inverse_stoch2(new_coords[0], -new_coords[1], Leg)
         return [motor_knee, motor_hip, theta]
+    
+    def _update_leg_phi(self, radius):
+        if(radius >= 0):
+            self.front_left.phi =  np.arctan2(self.body_length/2, radius + self.body_width/2)
+            self.front_right.phi = -np.arctan2(self.body_length/2, radius - self.body_width/2)
+            self.back_left.phi = -np.arctan2(self.body_length/2, radius + self.body_width/2)
+            self.back_right.phi =  np.arctan2(self.body_length/2, radius - self.body_width/2)
+        if(radius<0):
+            radius = -1*radius
+            self.front_right.phi =  np.arctan2(self.body_length/2, radius + self.body_width/2)
+            self.front_left.phi = -np.arctan2(self.body_length/2, radius - self.body_width/2)
+            self.back_right.phi = -np.arctan2(self.body_length/2, radius + self.body_width/2)
+            self.back_left.phi =  np.arctan2(self.body_length/2, radius - self.body_width/2)
+
+    
+    def _update_leg_step_length(self, step_length, radius):
+        if(radius >= 0):
+            self.front_right.step_length = step_length * (radius - self.body_width/2)/radius
+            self.front_left.step_length = step_length * (radius + self.body_width/2)/radius
+            self.back_right.step_length = step_length * (radius - self.body_width/2)/radius
+            self.back_left.step_length = step_length * (radius + self.body_width/2)/radius
+        if(radius < 0):
+            self.front_left.step_length = step_length * (radius - self.body_width/2)/radius
+            self.front_right.step_length = step_length * (radius + self.body_width/2)/radius
+            self.back_left.step_length = step_length * (radius - self.body_width/2)/radius
+            self.back_right.step_length = step_length * (radius + self.body_width/2)/radius
+
+    def drawBezier(self, points, weights, t):
+        newpoints = np.zeros(points.shape)
+        def drawCurve(points, weights, t):
+            # print("ent1")
+            if(points.shape[0]==1):
+                return [points[0,0]/weights[0], points[0,1]/weights[0]]
+            else:
+                newpoints=np.zeros([points.shape[0]-1, points.shape[1]])
+                newweights=np.zeros(weights.size)
+                for i in np.arange(newpoints.shape[0]):
+                    x = (1-t) * points[i,0] + t * points[i+1,0]
+                    y = (1-t) * points[i,1] + t * points[i+1,1]
+                    w = (1-t) * weights[i] + t*weights[i+1]
+                    newpoints[i,0] = x
+                    newpoints[i,1] = y
+                    newweights[i] = w
+                #   print(newpoints, newweights)
+                # print("end")
+                return drawCurve(newpoints, newweights, t)
+        for i in np.arange(points.shape[0]):
+            newpoints[i]=points[i]*weights[i]
+            # print(newpoints[i])
+        # print("entered")
+        if(t<=1):
+            return drawCurve(newpoints, weights, t)
+        if(t>1):
+            return [points[-1,0]+ (t-1)*(points[0,0] - points[-1,0]), -0.243]
 
 def constrain_abduction(angle):
     if(angle < 0):
@@ -338,6 +425,20 @@ if(__name__ == "__main__"):
     z = -0
     print(walkcon._inverse_3D(x,y,z, walkcon._leg))
     print(walkcon._inverse_stoch2(x,y,walkcon._leg))
+
+    #----------TESTING WALKING CONTROLLER BEZIER TRAJECTORY ------------------------------#
+    thetas = np.arange(0, 2*PI, 0.01)
+    action = [0.5,0.5,0,1,1,0,0.3]
+    x = np.zeros(thetas.size)
+    y = np.zeros(thetas.size)
+    count = 0
+    for theta in thetas:
+        walkcon.transform_action_to_motor_joint_command_bezier(theta,action)
+        count = count + 1
+    # plt.figure(1)
+    # plt.plot(x,y,label="trajectory")
+    # plt.show()
+    #--------------------------------------------------------------------------------------
 
 #     theta = 0
 #     action = np.zeros(10)
