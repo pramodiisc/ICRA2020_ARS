@@ -156,6 +156,8 @@ class Policy():
         self.theta = np.random.randn(output_size, input_size)
       else:
         self.theta = np.zeros((output_size, input_size))
+        self.theta[6,:] = 0.5
+        self.theta[:,-1] = 0.5
     self.env_name = env_name
     print("Starting policy theta=", self.theta)
 

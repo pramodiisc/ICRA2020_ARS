@@ -211,10 +211,9 @@ class WalkingController():
         legs.back_right.motor_abduction]
         return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8) 
     
-    def transform_action_to_motor_joint_command_bezier(self, theta, action):
+    def transform_action_to_motor_joint_command_bezier(self, theta, action, radius):
         Legs = namedtuple('legs', 'front_right front_left back_right back_left')
         legs = Legs(front_right = self.front_right, front_left = self.front_left, back_right = self.back_right, back_left = self.back_left)
-        radius = action[-1]
         step_length = 0.068*2
         self._update_leg_phi(radius)
         self._update_leg_step_length(step_length, radius)

@@ -1,0 +1,8 @@
+learning_rate: 0.1
+noise: 0.03
+env_name: Stoch2-v0episode_length: 15.0
+direction ratio: 2.0
+Normal initialization: 0
+Gait: trot
+Spline polynomial degree: 7
+Trot+Turn

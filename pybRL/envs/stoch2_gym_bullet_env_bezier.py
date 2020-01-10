@@ -35,7 +35,7 @@ class Stoch2Env(gym.Env):
 				 on_rack = False,
 				 gait = 'trot',
 				 phase = [0,PI,PI,0],
-				 action_dim = 10,
+				 action_dim = 7,
 				 stairs = True):
 
 		self._is_stairs = stairs
@@ -50,8 +50,10 @@ class Stoch2Env(gym.Env):
 		self._theta = 0
 		self._theta0 = 0
 		self._update_action_every = 1.  # update is every 50% of the step i.e., theta goes from 0 to pi/2
-		self._frequency = -2.8 #change back to 1
+		self._frequency = 2.8 #change back to 1
 		# self._frequency = 2.8 #change back to 1
+		self.frequency_weight = 1
+
 		self._kp = 20
 		self._kd = 2
 		self.dt = 0.001
@@ -60,7 +62,7 @@ class Stoch2Env(gym.Env):
 		self._action_dim = action_dim
 
 		# self._obs_dim = 7
-		self._obs_dim = 4
+		self._obs_dim = 14
 
 		self.action = np.zeros(self._action_dim)
 
@@ -78,6 +80,10 @@ class Stoch2Env(gym.Env):
 		self.avg_vel_per_step = 0
 		self.avg_omega_per_step = 0
 
+		self.linearV = 0
+		self.angV = 0
+
+		self.radius = 100
 		## Gym env related mandatory variables
 		observation_high = np.array([10.0] * self._obs_dim)
 		observation_low = -observation_high
@@ -126,6 +132,12 @@ class Stoch2Env(gym.Env):
 		self._pybullet_client.resetBaseVelocity(self.stoch2, [0, 0, 0], [0, 0, 0])
 
 		self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
+		self.SetFootFriction(0.6)
+		self.linearV = 0.30
+		self.angV = 0.6
+		self.radius = self.linearV/self.angV
+
+
 
 	def reset(self):
 		self._pybullet_client.resetBasePositionAndOrientation(self.stoch2, INIT_POSITION, INIT_ORIENTATION)
@@ -137,6 +149,9 @@ class Stoch2Env(gym.Env):
 		self.ResetPoseForAbd
 		self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
 		self._n_steps = 0
+		self.linearV = 0.30
+		self.angV = 0.6
+		self.radius = self.linearV/self.angV
 
 		return self.GetObservationReset()
 
@@ -157,7 +172,8 @@ class Stoch2Env(gym.Env):
 	
 
 	def do_simulation(self, action, n_frames, callback=None):
-		omega = 2 * np.pi * self._frequency * -1 #Maybe remove later
+		self.frequency_weight = action[-1]
+		omega = 2 * np.pi * self._frequency * self.frequency_weight #Maybe remove later
 		energy_spent_per_step = 0
 		self.action = action
 		cost_reference = 0
@@ -167,7 +183,7 @@ class Stoch2Env(gym.Env):
 		sum_V = 0
 		sum_W = 0
 		while(np.abs(omega*self.dt*counter) <= np.pi * self._update_action_every):
-			abd_m_angle_cmd, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.transform_action_to_motor_joint_command_bezier(self._theta,action)
+			abd_m_angle_cmd, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.transform_action_to_motor_joint_command_bezier(self._theta,action, self.radius)
 			self._theta = constrain_theta(omega * self.dt + self._theta)
 			# print(self._theta/PI)
 			qpos_act = np.array(self.GetMotorAngles())
@@ -248,10 +264,33 @@ class Stoch2Env(gym.Env):
 		return done, penalty
 
 	def _get_reward(self,action,energy_spent_per_step,cost_reference):
-		current_base_position, current_base_orientation = self.GetBasePosAndOrientation()
-		distance_travelled = current_base_position[0] - self._last_base_position[0] # added negative reward for staying still
-		reward = distance_travelled
+
+		pos, ori = self.GetBasePosAndOrientation()
+		x = pos[0]
+		y = pos[1]
+		radius = math.sqrt((x)**2 + (abs(y)-abs(self.radius))**2)
+
+		current_v =  round(self.avg_vel_per_step,2)                   #self.GetAvgCurrentVelocity()
+		current_w = self.avg_omega_per_step
+		print("Ang_Velocity {}".format(current_w))
+		# v  = self.GetBaseLinearVelocity()
+		# print(math.sqrt(v[0]**2 + v[1]**2))
+		
+		current_r = round(radius,2)
+		desired_v  = round(self.linearV,2)
+		desired_r = round(self.radius,2)
+
+		#print("current_avg_v is {} and desired_v is {}".format(current_v, desired_v))
+		print("current_radius is {} and desired_radius is {}".format(current_r,desired_r))
+
+		done, penalty = self._termination(pos, ori)
+		velocity_reward = np.exp(-40*((current_v - desired_v)**2))
+		radius_reward = np.exp(-20*((current_r - desired_r)**2))
+		reward = velocity_reward + radius_reward - 0.01 * energy_spent_per_step
+		#print("radius_reward reward {}".format(radius_reward))
+
 		return reward
+
 	def _apply_pd_control(self, motor_commands, motor_vel_commands):
 		qpos_act = self.GetMotorAngles()
 		qvel_act = self.GetMotorVelocities()
@@ -261,11 +300,12 @@ class Stoch2Env(gym.Env):
 			self.SetMotorTorqueById(motor_id, motor_torque)
 		return applied_motor_torque
 	def GetObservation(self):
-		pos, ori = self.GetBasePosAndOrientation()
-		ang_vel = self.avg_omega_per_step
-		lin_vel = self.avg_vel_per_step
-		print("lin_vel {} ang_Vel {}".format(lin_vel, ang_vel))
-		return np.concatenate([ori]).ravel()
+
+		motor_angles = self.GetMotorAngles()
+		obs = np.concatenate((motor_angles,[self.linearV],[self.angV])).ravel()
+		return obs
+
+
 	def GetObservationReset(self):
 		"""
 		Resets the robot and returns the base position and Orientation with a random error
@@ -273,8 +313,10 @@ class Stoch2Env(gym.Env):
 		:return : Initial state with an error.
 		Robot starts in the same position, only it's readings have some error.
 		"""
-		pos, ori = self.GetBasePosAndOrientation()
-		return np.concatenate([ori]).ravel()
+		motor_angles = self.GetMotorAngles()
+		obs = np.concatenate((motor_angles,[self.linearV],[self.angV])).ravel()
+		return obs
+
 	def GetMotorAngles(self):
 		motor_ang = [self._pybullet_client.getJointState(self.stoch2, motor_id)[0] for motor_id in self._motor_id_list]
 		return motor_ang
@@ -304,6 +346,11 @@ class Stoch2Env(gym.Env):
 		basevelocity= self._pybullet_client.getBaseVelocity(self.stoch2)
 		return basevelocity[0] #world linear Velocity vec3, list of 3 floats
 
+	def SetFootFriction(self, foot_friction):
+		FOOT_LINK_ID = [3,8,14,19]
+		for link_id in FOOT_LINK_ID:
+			self._pybullet_client.changeDynamics(
+			self.stoch2, link_id, lateralFriction=foot_friction)
 
 	def SetMotorTorqueById(self, motor_id, torque):
 		self._pybullet_client.setJointMotorControl2(
@@ -530,80 +577,9 @@ class Stoch2Env(gym.Env):
 	def do_trajectory(self, ):
 		pass
 if(__name__ == "__main__"):
-	# env = Stoch2Env(render=True, stairs = False,on_rack=False, gait = 'trot')
-	# traj_fl = np.load("traj_fl.npy")
-	# traj_fr = np.load("traj_fr.npy")
-	# traj_bl = np.load("traj_bl.npy")
-	# traj_br = np.load("traj_br.npy")
-
-	# env.apply_trajectory2d(traj_fl, traj_fr, traj_bl, traj_br, PI/6, -PI/6, -PI/6, PI/6)
-
-	# body_width = .24
-	# body_length = .37
-	# radius = .50
-
-	# fr_phi = -np.arctan2(body_length/2, radius - body_width/2)
-	# br_phi = np.arctan2(body_length/2, radius - body_width/2)
-	# fl_phi = np.arctan2(body_length/2, radius + body_width/2)
-	# bl_phi = -np.arctan2(body_length/2, radius + body_width/2)
-
-	# step_length = 0.084
-	# y_axis = 0.042
-	# fr_xaxis = 0.084* (radius - body_width/2)/radius
-	# fl_xaxis = 0.084* (radius + body_width/2)/radius
-	# br_xaxis = 0.08if(radius > 0):
-			# self.front_right.step_length = step_length * (radius - self.body_width/2)/radius
-			# self.front_left.step_length = step_length * (radius + self.body_width/2)/radius
-			# self.back_right.step_length = step_length * (radius - self.body_width/2)/radius
-			# self.back_left.step_length = step_length * (radius + self.body_width/2)/radius4* (radius - body_width/2)/radius
-	# bl_xaxis = 0.084* (radius + body_width/2)/radius
-
-	# thetas = np.arange(0, 2*np.pi, 0.001)
-	# fr_traj = np.zeros([2,thetas.size])
-	# fl_traj = np.zeros([2,thetas.size])
-	# br_traj = np.zeros([2,thetas.size])
-	# bl_traj = np.zeros([2,thetas.size])
-	# count = 0
-	# center = [0.0, 0.0]
-	# yaxis = 0.042
-	# for theta in thetas:
-	#     fr_traj[0,count] = fr_xaxis*np.cos(theta) + center[0]
-	#     fr_traj[1,count] = yaxis*np.sin(theta) + center[1]
-
-	#     fl_traj[0,count] = fl_xaxis*np.cos(theta) + center[0]
-	#     fl_traj[1,count] = yaxis*np.sin(theta) + center[1]
-
-	#     br_traj[0,count] = br_xaxis*np.cos(theta) + center[0]
-	#     br_traj[1,count] = yaxis*np.sin(theta) + center[1]
-
-	#     bl_traj[0,count] = bl_xaxis*np.cos(theta) + center[0]
-	#     bl_traj[1,count] = yaxis*np.sin(theta) + center[1]
-	#     count = count + 1
-	# env = Stoch2Env(render=True, stairs = False,on_rack=False, gait = 'trot')
-	# env.apply_trajectory2d(fl_traj, fr_traj, bl_traj, br_traj, fl_phi, fr_phi, bl_phi, br_phi)
-
-	# plt.figure(1)
-	# plt.plot(fr_traj[0],fr_traj[1],'r', label = 'fr')
-	# plt.plot(fl_traj[0],fl_traj[1],'g', label = 'fl')
-	# plt.plot(br_traj[0],br_traj[1],'b', label = 'br')
-	# plt.plot(bl_traj[0],bl_traj[1],'y', label = 'bl')
-	# plt.legend()
-	# plt.show()
+	
 	env = Stoch2Env(render=True, stairs = False,on_rack=False, gait = 'trot')
-	action = [-0.5,1,1,1,1,-0.5,-0.4]
-	for i in range(1000):
+	action = [-0.5,1,1,1,1,-0.5,0.6]
+	for i in range(200):
 		env.step(action)
 
-
-	#body_width = 24cm
-	#body_length = 37cm
-
-	#smallest circle radius = 30
-	#highest circle radius  = infinity
-
-	#max step length = 22cm
-	#min step length = 0
-
-	#v/r = v+vo/r+w/2 = v+vi/r-w/2 * (r-w/2)/r * step length, (r+w/2)/r * step length
-
-	# 24/30 36/30* step length
