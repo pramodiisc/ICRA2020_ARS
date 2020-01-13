@@ -239,17 +239,10 @@ class WalkingController():
         """
         Legs = namedtuple('legs', 'front_right front_left back_right back_left')
         legs = Legs(front_right = self.front_right, front_left = self.front_left, back_right = self.back_right, back_left = self.back_left)
-        
-        legs.front_left.rfunc = fl_rfunc[0]
-        legs.front_right.rfunc = fr_rfunc[0]
-        legs.back_left.rfunc = bl_rfunc[0]
-        legs.back_right.rfunc = br_rfunc[0]
-
         legs.front_left.phi = fl_rfunc[1]
         legs.front_right.phi = fr_rfunc[1]
         legs.back_left.phi = bl_rfunc[1]
         legs.back_right.phi = br_rfunc[1]
-
         self.update_leg_theta(theta)
         for leg in legs:
             y_center = -0.195

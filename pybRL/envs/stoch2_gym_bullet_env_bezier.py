@@ -133,8 +133,8 @@ class Stoch2Env(gym.Env):
 
 		self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
 		self.SetFootFriction(0.6)
-		self.linearV = 0.30
-		self.angV = 0.6
+		self.linearV = 1
+		self.angV = 0.001
 		self.radius = self.linearV/self.angV
 
 
@@ -553,18 +553,13 @@ class Stoch2Env(gym.Env):
 	def apply_trajectory2d(self, fl_traj, fr_traj, bl_traj, br_traj, fl_phi, fr_phi, bl_phi, br_phi):
 		"""
 		Provides an interface for testing, you can give external xy trajectories and see how the robot behaves, the trajectory should be
-		centered at 0. Provide trajectory for fl, fr, bl, br in that order
+		centered at 0 (maybe). Provide trajectory for fl, fr, bl, br in that order
 		"""
-		fl_rfunc = interp1d([constrain_theta(x) for x in np.arctan2(fl_traj[1], fl_traj[0])], (fl_traj[0]**2 + fl_traj[1]**2)**0.5, bounds_error = False, fill_value = "extrapolate")
-		fr_rfunc = interp1d([constrain_theta(x) for x in np.arctan2(fr_traj[1], fr_traj[0])], (fr_traj[0]**2 + fr_traj[1]**2)**0.5, bounds_error = False, fill_value = "extrapolate")
-		bl_rfunc = interp1d([constrain_theta(x) for x in np.arctan2(bl_traj[1], bl_traj[0])], (bl_traj[0]**2 + bl_traj[1]**2)**0.5, bounds_error = False, fill_value = "extrapolate")
-		br_rfunc = interp1d([constrain_theta(x) for x in np.arctan2(br_traj[1], br_traj[0])], (br_traj[0]**2 + br_traj[1]**2)**0.5, bounds_error = False, fill_value = "extrapolate")
 		self._theta = 0
 		omega = 2 * np.pi * self._frequency
 		while True:
-			print(self._theta/PI)
 			abd_m_angle_cmd, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.run_traj2d(self._theta,
-			[fl_rfunc,fl_phi], [fr_rfunc, fr_phi], [bl_rfunc, bl_phi], [br_rfunc, br_phi])
+			[fl_traj,fl_phi], [fr_traj, fr_phi], [bl_traj, bl_phi], [br_traj, br_phi])
 			self._theta = constrain_theta(omega * self.dt + self._theta)
 			qpos_act = np.array(self.GetMotorAngles())
 			m_angle_cmd_ext = np.array(leg_m_angle_cmd + abd_m_angle_cmd)
