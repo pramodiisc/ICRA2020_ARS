@@ -8,6 +8,7 @@ body_length = 0.37
 body_radius = ((body_width/2)**2 + (body_length/2)**2)**0.5
 step_length = 0.068*2
 # step_length = 0.1*2
+# Adding a transitioning logic "How? and What?"
 
 
 def get_world_coords(com_position, local_coordinates):
@@ -85,7 +86,10 @@ bly = -body_length/2
 brx = body_width/2
 bry = -body_length/2
 
-state = np.array([1,0,0])
+state0 = np.array([0.5,0.5,0.5])
+state1 = np.array([1,1,1])
+state2 = np.array([0.5,1,1])
+state3 = np.array([0,1,1])
 
 fltheta1 = np.arctan2(-body_width/2, body_length/2)
 frtheta1 = np.arctan2(body_width/2, body_length/2)
@@ -93,7 +97,7 @@ brtheta1 = np.arctan2(body_width/2, -body_length/2)
 bltheta1 = np.arctan2(-body_width/2, -body_length/2)
 max_theta = step_length/body_radius
 plt.figure(0)
-fig,a = plt.subplots(1,3)
+fig,a = plt.subplots(1,5)
 local_coords = np.array([[flx,fly,1],[frx,fry,1],[brx,bry,1],[blx,bly,1]])
 local_footstep_coords = np.array([[flx,fly,1],[frx,fry,1],[brx,bry,1],[blx,bly,1]])
 
@@ -106,9 +110,9 @@ a[0].set_title("t = 0")
 a[0].set_xlim([-1,1])
 a[0].set_ylim([-1,1])
 
-com = get_new_com(com, state)
+com = get_new_com(com, state0)
 world_coords = get_world_coords(com, local_coords)
-local_footstep_coords = get_footstep_coords_local(local_footstep_coords, local_coords, state, 1)
+local_footstep_coords = get_footstep_coords_local(local_footstep_coords, local_coords, state0, 1)
 plot_world_coords(a[1], world_coords)
 plot_circle(a[1],com)
 plot_footstep_coords(a[1], local_footstep_coords, com)
@@ -117,10 +121,9 @@ a[1].set_title("t = T/2")
 a[1].set_xlim([-1,1])
 a[1].set_ylim([-1,1])
 
-state = np.array([0,0,0])
-com = get_new_com(com, state)
+com = get_new_com(com, state1)
 world_coords = get_world_coords(com, local_coords)
-local_footstep_coords = get_footstep_coords_local(local_footstep_coords, local_coords, state, -1)
+local_footstep_coords = get_footstep_coords_local(local_footstep_coords, local_coords, state1, -1)
 plot_world_coords(a[2], world_coords)
 plot_circle(a[2],com)
 plot_footstep_coords(a[2], local_footstep_coords, com)
@@ -129,13 +132,27 @@ a[2].set_title("t = T")
 a[2].set_xlim([-1,1])
 a[2].set_ylim([-1,1])
 
-# com = get_new_com(com, state)
-# world_coords = get_world_coords(com, local_coords)
-# plot_world_coords(a[3], world_coords)
-# plot_circle(a[3],com)
-# a[3].set_title("t = 3T/2")
-# a[3].set_xlim([-1,1])
-# a[3].set_ylim([-1,1])
+com = get_new_com(com, state2)
+world_coords = get_world_coords(com, local_coords)
+local_footstep_coords = get_footstep_coords_local(local_footstep_coords, local_coords, state2, 1)
+plot_world_coords(a[3], world_coords)
+plot_circle(a[3],com)
+plot_footstep_coords(a[3], local_footstep_coords, com)
+
+a[3].set_title("t = 3T/2")
+a[3].set_xlim([-1,1])
+a[3].set_ylim([-1,1])
+
+com = get_new_com(com, state3)
+world_coords = get_world_coords(com, local_coords)
+local_footstep_coords = get_footstep_coords_local(local_footstep_coords, local_coords, state3, -1)
+plot_world_coords(a[4], world_coords)
+plot_circle(a[4],com)
+plot_footstep_coords(a[4], local_footstep_coords, com)
+
+a[4].set_title("t = 3T/2")
+a[4].set_xlim([-1,1])
+a[4].set_ylim([-1,1])
 
 plt.show()
 # theta_dash = Omega*max_theta/mod
