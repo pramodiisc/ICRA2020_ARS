@@ -12,6 +12,14 @@ r = 0.068*2
 # Adding a transitioning logic "How? and What?"
 
 
+class Robot:
+    def __init__(self):
+        self.time = 0
+        self.tau = 1
+    def update(self):
+        self.time = self.time + 1
+        self.tau = self.tau*-1
+
 def get_world_coords(com_position, local_coordinates):
     th = com_position[2]
     trans = np.array([[cos(th), -sin(th), com_position[0]],
@@ -41,14 +49,24 @@ def get_footstep_coords_local(footstep_pos,local_coords, state, tau=1):
     final_footstep_pos.append(footstep_pos[3]-tau*bl_change)
     return np.array(final_footstep_pos)
 
-def plot_footstep_coords(axes,footstep_pos, com):
+def plot_footstep_coords(axes,footstep_pos, com, tau=1):
     world_coord = get_world_coords(com, footstep_pos)
-    x = []
-    y = []
+    x_stance = []
+    y_stance = []
+    x_swing = []
+    y_swing = []
     for coord  in world_coord:
-        x.append(coord[0])
-        y.append(coord[1])
-    axes.plot(x,y,'o','g')
+        if(tau == 1):
+            x_stance.append(coord[0])
+            y_stance.append(coord[1])
+            tau = -1
+        elif(tau == -1):
+            x_swing.append(coord[0])
+            y_swing.append(coord[1])
+            tau = 1
+    axes.plot(x_stance,y_stance,'bo')
+    axes.plot(x_swing,y_swing,'go')
+
 
 def plot_world_coords(axes, coordinates):
     x = []
@@ -76,6 +94,18 @@ def get_new_com(com, state):
         return np.array([com[0]+state[1]*(state[1]**2/mod)*step_length,
                      com[1]+state[0]*(state[0]**2/mod)*step_length,
                      com[2]+state[2]*(state[2]**2/mod)*step_length ])
+
+def plot_all(axes, world_coords, COM, footstep_coords, robot):
+    plot_world_coords(axes, world_coords)
+    plot_circle(axes, COM)
+    plot_footstep_coords(axes, footstep_coords, COM, robot.tau)
+    axes.set_title("t = T*"+str(robot.time/2))
+    axes.set_xlim([-1,1])
+    axes.set_ylim([-1,1])
+    robot.update()
+    pass
+
+rob = Robot()
 flx = -body_width/2
 fly = body_length/2
 frx = body_width/2
@@ -88,13 +118,9 @@ bry = -body_length/2
 state0 = np.array([0.5,0,0])
 state1 = np.array([1,0,0])
 state2 = np.array([0.1,0,0])
-state3 = np.array([0,0,0])
+state3 = np.array([1,0,0])
 
-fltheta1 = np.arctan2(-body_width/2, body_length/2)
-frtheta1 = np.arctan2(body_width/2, body_length/2)
-brtheta1 = np.arctan2(body_width/2, -body_length/2)
-bltheta1 = np.arctan2(-body_width/2, -body_length/2)
-max_theta = step_length/body_radius
+max_theta = 0.179
 plt.figure(0)
 fig,a = plt.subplots(1,5)
 local_coords = np.array([[flx,fly,1],[frx,fry,1],[brx,bry,1],[blx,bly,1]])
@@ -102,81 +128,32 @@ local_footstep_coords = np.array([[flx,fly,1],[frx,fry,1],[brx,bry,1],[blx,bly,1
 
 com = np.array([0,0,0])
 world_coords = get_world_coords(com, local_coords)
-plot_world_coords(a[0], world_coords)
-plot_circle(a[0],com)
-plot_footstep_coords(a[0], local_footstep_coords, com)
-a[0].set_title("t = 0")
-a[0].set_xlim([-1,1])
-a[0].set_ylim([-1,1])
+plot_all(a[0], world_coords, com, local_footstep_coords, rob)
 
 com = get_new_com(com, state0)
 world_coords = get_world_coords(com, local_coords)
 local_footstep_coords = get_footstep_coords_local(local_footstep_coords, local_coords, state0, 1)
-plot_world_coords(a[1], world_coords)
-plot_circle(a[1],com)
-plot_footstep_coords(a[1], local_footstep_coords, com)
+plot_all(a[1], world_coords, com, local_footstep_coords, rob)
 
-a[1].set_title("t = T/2")
-a[1].set_xlim([-1,1])
-a[1].set_ylim([-1,1])
 
 com = get_new_com(com, state1)
 world_coords = get_world_coords(com, local_coords)
 local_footstep_coords = get_footstep_coords_local(local_footstep_coords, local_coords, state1, -1)
-plot_world_coords(a[2], world_coords)
-plot_circle(a[2],com)
-plot_footstep_coords(a[2], local_footstep_coords, com)
+plot_all(a[2], world_coords, com, local_footstep_coords, rob)
 
-a[2].set_title("t = T")
-a[2].set_xlim([-1,1])
-a[2].set_ylim([-1,1])
 
 com = get_new_com(com, state2)
 world_coords = get_world_coords(com, local_coords)
 local_footstep_coords = get_footstep_coords_local(local_footstep_coords, local_coords, state2, 1)
-plot_world_coords(a[3], world_coords)
-plot_circle(a[3],com)
-plot_footstep_coords(a[3], local_footstep_coords, com)
+plot_all(a[3], world_coords, com, local_footstep_coords, rob)
 
-a[3].set_title("t = 3T/2")
-a[3].set_xlim([-1,1])
-a[3].set_ylim([-1,1])
 
 com = get_new_com(com, state3)
 world_coords = get_world_coords(com, local_coords)
 local_footstep_coords = get_footstep_coords_local(local_footstep_coords, local_coords, state3, -1)
-plot_world_coords(a[4], world_coords)
-plot_circle(a[4],com)
-plot_footstep_coords(a[4], local_footstep_coords, com)
-
-a[4].set_title("t = 3T/2")
-a[4].set_xlim([-1,1])
-a[4].set_ylim([-1,1])
+plot_all(a[4], world_coords, com, local_footstep_coords, rob)
+ 
 
 plt.show()
-# theta_dash = Omega*max_theta/mod
 
-# y[0] = y[0] + body_radius*(np.cos(fltheta1 + theta_dash) - np.cos(fltheta1))
-# y[1] = y[1] + body_radius*(np.cos(frtheta1 + theta_dash) - np.cos(frtheta1))
-# y[2] = y[2] + body_radius*(np.cos(brtheta1 + theta_dash) - np.cos(brtheta1))
-# y[3] = y[3] + body_radius*(np.cos(bltheta1 + theta_dash) - np.cos(bltheta1))
-# y[4] = y[4] + body_radius*(np.cos(fltheta1 + theta_dash) - np.cos(fltheta1))
 
-# x[0] = x[0] + body_radius*(np.sin(fltheta1 + theta_dash) - np.sin(fltheta1))
-# x[1] = x[1] + body_radius*(np.sin(frtheta1 + theta_dash) - np.sin(frtheta1))
-# x[2] = x[2] + body_radius*(np.sin(brtheta1 + theta_dash) - np.sin(brtheta1))
-# x[3] = x[3] + body_radius*(np.sin(bltheta1 + theta_dash) - np.sin(bltheta1))
-# x[4] = x[4] + body_radius*(np.sin(fltheta1 + theta_dash) - np.sin(fltheta1))
-# x_circ = np.zeros(100)
-# y_circ = np.zeros(100)
-# for i  in np.arange(100):
-#     x_circ[i] = np.mean(x[:-1])+body_radius*np.cos(i*2*PI/100)
-#     y_circ[i] = np.mean(y[:-1])+body_radius*np.sin(i*2*PI/100)
-
-# a[1].plot(x,y)
-# a[1].plot(x_circ, y_circ)
-# a[1].set_title("t = T/2")
-# a[1].set_xlim([-1,1])
-# a[1].set_ylim([-1,1])
-
-# plt.show()
