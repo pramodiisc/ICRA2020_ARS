@@ -7,6 +7,7 @@ body_width = 0.24
 body_length = 0.37
 body_radius = ((body_width/2)**2 + (body_length/2)**2)**0.5
 step_length = 0.068*2
+r = 0.068*2
 # step_length = 0.1*2
 # Adding a transitioning logic "How? and What?"
 
@@ -33,8 +34,6 @@ def get_footstep_coords_local(footstep_pos,local_coords, state, tau=1):
     fr_change = trans@local_coords[1] - local_coords[1]
     br_change = trans@local_coords[2] - local_coords[2]
     bl_change = trans@local_coords[3] - local_coords[3]
-    print(fl_change)
-    print(y_pos)
     final_footstep_pos = []
     final_footstep_pos.append(footstep_pos[0]+tau*fl_change)
     final_footstep_pos.append(footstep_pos[1]-tau*fr_change)
@@ -86,10 +85,10 @@ bly = -body_length/2
 brx = body_width/2
 bry = -body_length/2
 
-state0 = np.array([0.5,0.5,0.5])
-state1 = np.array([1,1,1])
-state2 = np.array([0.5,1,1])
-state3 = np.array([0,1,1])
+state0 = np.array([0.5,0,0])
+state1 = np.array([1,0,0])
+state2 = np.array([0.1,0,0])
+state3 = np.array([0,0,0])
 
 fltheta1 = np.arctan2(-body_width/2, body_length/2)
 frtheta1 = np.arctan2(body_width/2, body_length/2)

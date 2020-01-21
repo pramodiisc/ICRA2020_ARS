@@ -233,6 +233,30 @@ class WalkingController():
         leg_abduction_angles = [legs.front_left.motor_abduction, legs.front_right.motor_abduction, legs.back_left.motor_abduction,
         legs.back_right.motor_abduction]
         return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8)
+    
+    def footstep_to_motor_joint_command(self, theta, footstep, footstep_last):        
+        Legs = namedtuple('legs', 'front_right front_left back_right back_left')
+        legs = Legs(front_right = self.front_right, front_left = self.front_left, back_right = self.back_right, back_left = self.back_left)
+        step_length = 0.068*2
+        self._update_leg_transformation_matrix(legs, footstep)
+        self._update_leg_step_length_footstep(legs, footstep)
+        self.update_leg_theta(theta)
+        for leg in legs:
+            tau = leg.theta/PI
+            weights = np.ones(6)
+            x,y = self.drawBezier(self._pts, weights, tau)
+            #We need to move it also, so that when tau = 0, it reaches footstep_last, tau = 1 it reaches footstep_current
+            leg.x, leg.y, leg.z = np.array([[np.cos(leg.phi),0,np.sin(leg.phi)],[0,1,0],[-np.sin(leg.phi),0, np.cos(leg.phi)]])@np.array([x,y,0])
+            leg.motor_knee, leg.motor_hip,leg.motor_abduction = self._inverse_3D(leg.x, leg.y, leg.z, self._leg)
+            leg.motor_hip = leg.motor_hip + self.MOTOROFFSETS[0]
+            leg.motor_knee = leg.motor_knee + self.MOTOROFFSETS[1]
+        
+        leg_motor_angles = [legs.front_left.motor_hip, legs.front_left.motor_knee, legs.front_right.motor_hip, legs.front_right.motor_knee,
+        legs.back_left.motor_hip, legs.back_left.motor_knee, legs.back_right.motor_hip, legs.back_right.motor_knee]
+        leg_abduction_angles = [legs.front_left.motor_abduction, legs.front_right.motor_abduction, legs.back_left.motor_abduction,
+        legs.back_right.motor_abduction]
+        return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8)
+    
     def run_traj2d(self, theta, fl_rfunc, fr_rfunc, bl_rfunc, br_rfunc):
         """
         Provides an interface to run trajectories given r as a function of theta and abduction angles
@@ -401,6 +425,15 @@ class WalkingController():
         if(t>1):
             return [points[-1,0]+ (t-1)*(points[0,0] - points[-1,0]), -0.243]
 
+    def _update_leg_step_length_footstep(legs, footstep, last_footstep):
+        legs.front_left.step_length = ((footstep.front_left.x - last_footstep.front_left.x)**2 + (footstep.front_left.z - last_footstep.front_left.z)**2)**0.5
+        legs.front_right.step_length = ((footstep.front_right.x - last_footstep.front_right.x)**2 + (footstep.front_right.z - last_footstep.front_right.z)**2)**0.5
+        legs.back_left.step_length = ((footstep.back_left.x - last_footstep.back_left.x)**2 + (footstep.back_left.z - last_footstep.back_left.z)**2)**0.5
+        legs.back_right.step_length = ((footstep.back_right.x - last_footstep.back_right.x)**2 + (footstep.back_right.z - last_footstep.back_right.z)**2)**0.5
+
+    def _update_leg_transformation_matrix(legs, footstep, last_footstep):
+        
+        pass
 def constrain_abduction(angle):
     if(angle < 0):
         angle = 0
