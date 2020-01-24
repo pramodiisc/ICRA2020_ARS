@@ -13,7 +13,7 @@ for pt in y:
     count = count + 1
 x_bottom = np.arange(x_min[-1], x_max[-1], -0.001)
 x_top = np.arange(x_min[0], x_max[0], -0.001)
-final_x = np.concatenate([x_max, np.flip(x_bottom), x_min, x_top])
+final_x = np.concatenate([x_max, np.flip(x_bottom,0), x_min, x_top])
 final_y = np.concatenate([y, np.ones(x_bottom.size)*y[-1], y, np.ones(x_top.size)*y[0]])
 # center = [0, -0.195]
 # center = [0,0] # Need to change
