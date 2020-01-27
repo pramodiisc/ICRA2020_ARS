@@ -46,33 +46,11 @@ class Graph():
             path.append(self.ids[current_node])
             if(current_node == self.nodes[n1]):
                 break
-        path.reverse()
         return path
 
     
     def get_adjacency_matrix(self):
         return self.adjacency_matrix[0:self.id, 0:self.id]
-
-g = Graph()
-g.add_node('a')
-g.add_node('b')
-g.add_node('c')
-g.add_node('d')
-g.add_node('e')
-g.add_node('f')
-g.add_connection('a','b')
-g.add_connection('b','c')
-g.add_connection('c','d')
-g.add_connection('a','d')
-g.add_connection('e','a')
-g.add_connection('d','e')
-g.add_connection('a','c')
-g.add_connection('c','f')
-
-
-
-path = g.get_shortest_path('a', 'c')
-print(path)
 
 class TransformManager():
     def __init__(self):
@@ -134,12 +112,4 @@ class Vector():
         else:
             return self.tf.get_transform(self.frame, frame)[:3, :3]@np.array([self.x, self.y, self.z])
 
-tf = TransformManager()
-tf.add_transform('A','B', transformation_matrix = np.array([[1,0,0,0],[0,-1,0,0.5],[0,0,1,0],[0,0,0,1]]))
-tf.add_transform('B','C', transformation_matrix = np.array([[1,0,0,0],[0,1,0,0.8],[0,0,1,0],[0,0,0,1]]))
-pt1 = Point('A', tf)
-vec1 = Vector('A',tf,1,1,1)
-vec1('C')
-print(vec1('C'))
-print(pt1('C'))
 

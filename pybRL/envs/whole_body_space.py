@@ -1,7 +1,10 @@
+import sys, os
+sys.path.append(os.path.realpath('../..'))
 import matplotlib.pyplot as plt 
 import numpy as np
 from numpy import cos, sin
 from dataclasses import dataclass
+import pybRL.utils.frames as frames
 
 PI = np.pi
 
@@ -14,7 +17,6 @@ omega_max = 0.03416 #calculated seperately
 # r = 0.068*2
 
 # step_length = 0.1*2
-# Adding a transitioning logic "How? and What?"
 
 
 cross = lambda v1, v2 : np.array([v1[1]*v2[2] - v2[1]*v1[2], v1[2]*v2[0] - v1[0]*v2[2], v1[0]*v2[1] - v1[1]*v2[0]]) 
