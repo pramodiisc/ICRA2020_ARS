@@ -2,6 +2,7 @@
 A collection of functions to make it easy to deal with all the coordinate frames, points and vectors we come across in robotics
 """
 import numpy as np 
+from numpy import cos, sin 
 class Graph():
     def __init__(self):
         self.nodes = {}
@@ -46,6 +47,7 @@ class Graph():
             path.append(self.ids[current_node])
             if(current_node == self.nodes[n1]):
                 break
+        path.reverse()
         return path
 
     
@@ -77,8 +79,21 @@ class TransformManager():
             return None
         trans_matrix = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
         for i in np.arange(len(path) - 1):
-            trans_matrix = trans_matrix@self.transforms[(path[i], path[i+1])]
+            trans_matrix = self.transforms[(path[i], path[i+1])]@trans_matrix
         return trans_matrix
+    def rotateEuler(self,axis, angle):
+        """Returns a numpy array corresponding to transformation matrix about axis by angle radians.
+        Axis is a string 'X', 'Y', 'Z' and angle is in radians """
+        if(axis == 'Z'):
+            return np.array([[cos(angle), -sin(angle),0,0],[sin(angle), cos(angle),0,0],[0,0,1,0],[0,0,0,1]])
+        if(axis == 'Y'):
+            return np.array([[cos(angle),0,sin(angle),0],[0,1,0,0],[-sin(angle),0,cos(angle),0],[0,0,0,1]])
+        if(axis == 'X'):
+            return np.array([[1,0,0,0],[0,cos(angle), -sin(angle),0],[0,sin(angle), cos(angle),0],[0,0,0,1]])
+
+    def translateEuler(self,trans):
+        """ Returns a numpy array corresponding to translating by the input given"""
+        return np.array([[1,0,0,trans[0]],[0,1,0,trans[1]],[0,0,1,trans[2]],[0,0,0,1]])
     def transform_point(self, point, to_frame):
         pass
     def transform_vector(self, vector, to_frame):
