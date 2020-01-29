@@ -1,3 +1,7 @@
+import sys, os
+sys.path.append(os.path.realpath('../..'))
+
+import pybRL.utils.frames as frames
 import matplotlib.pyplot as plt 
 import numpy as np 
 y = np.arange(-0.145, -0.245, -0.001)
@@ -148,14 +152,13 @@ def drawBezier(points, weights, t):
         return drawCurve(newpoints, weights, t)
     if(t>1):
         return [points[-1,0]+ (t-1)*(points[0,0] - points[-1,0]), -0.243]
-x= np.zeros(200)
-y =np.zeros(200)
-count = 0
-print(drawBezier(points,weights,1.1))
-for t in np.arange(0,2, 0.01):
-    x[count], y[count] = drawBezier(points,weights, t)
-    count = count+1
-# print(x)
-plt.plot(x,y,'g', label = 'robot trajectory')
-plt.show()
+
+tf = frames.TransformManager()
+footstep_initial = frames.Point('FL',tf,0,0,0)
+footstep_initial = frames.Point('FL',tf,0,0,0.068)
+
+def drawBezierBetweenFootsteps(footstep_initial, footstep_final):
+
+    pass
+
 

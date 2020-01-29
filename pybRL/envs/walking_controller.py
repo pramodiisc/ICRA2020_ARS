@@ -234,11 +234,11 @@ class WalkingController():
         legs.back_right.motor_abduction]
         return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8)
     
-    def footstep_to_motor_joint_command(self, theta, footstep, footstep_last):        
+    def footstep_to_motor_joint_command(self, theta, footstep, footstep_last):
+        """Provides footstep position. Generates bezier curve with given weights to follow the footstep position"""
         Legs = namedtuple('legs', 'front_right front_left back_right back_left')
         legs = Legs(front_right = self.front_right, front_left = self.front_left, back_right = self.back_right, back_left = self.back_left)
-        step_length = 0.068*2
-        self._update_leg_transformation_matrix(legs, footstep)
+        #I give initial and final points and it calculates bezier joining said points
         self._update_leg_step_length_footstep(legs, footstep)
         self.update_leg_theta(theta)
         for leg in legs:
