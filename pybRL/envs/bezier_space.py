@@ -4,6 +4,8 @@ sys.path.append(os.path.realpath('../..'))
 import pybRL.utils.frames as frames
 import matplotlib.pyplot as plt 
 import numpy as np 
+from mpl_toolkits.mplot3d import Axes3D
+
 y = np.arange(-0.145, -0.245, -0.001)
 
 x_max = np.zeros(y.size)
@@ -26,6 +28,7 @@ thetas = np.arange(0, 2*np.pi, 0.001)
 tau = thetas/(2*np.pi)
 x = np.zeros(thetas.size)
 y = np.zeros(thetas.size)
+# z = np.zeros(theta.size)
 count = 0 
 x_w = [-0.03, -0.06, 0.06, 0.03]
 y_w = [-0.243, -0.15, -0.15, -0.243]
@@ -38,13 +41,13 @@ for t in tau:
     x[count] = (x_w[0]*f[0] + x_w[1]*f[1]+x_w[2]*f[2]+x_w[3]*f[3])/basis
     y[count] = (y_w[0]*f[0]+  y_w[1]*f[1]+y_w[2]*f[2]+y_w[3]*f[3])/basis  
     count = count + 1
-
-plt.figure(1)
+fig = plt.figure()
+ax = fig.gca(projection='3d')
 
 # np.save("traj_br.npy", traj)
 # np.save("ellipsex.npy", x_circ)
 # np.save("ellipsey.npy", y_circ)
-plt.plot(final_x,final_y,'r', label = 'robot workspace')
+# plt.plot(final_x,final_y,'r', label = 'robot workspace')
 # plt.plot(x,y,'g', label = 'robot trajectory')
 
 
@@ -123,23 +126,35 @@ plt.plot(final_x,final_y,'r', label = 'robot workspace')
 # plt.legend()
 action =np.array([-0.5,1,1,1,1,1])
 weights = (action+1)/2 + 1e-3 # TO prevent 0 from occuring we add 1e-3
-points = np.array([[-0.068,-0.243],[-0.115,-0.243],[-0.065,-0.145],[0.065,-0.145],[0.115,-0.243],[0.068,-0.243]])
+tf = frames.TransformManager()
+points = np.array([[-0.068,-0.243,0],[-0.115,-0.243,0],[-0.065,-0.145,0],[0.065,-0.145,0],[0.115,-0.243,0],[0.068,-0.243,0]])
+step_length = 0.017
+points[0,0]= -step_length/2
+points[-1,0] = step_length/2
+pt1 = points[0]
+pt2 = points[-1]
+pt3 = np.array([0,-0.243,-0.017/2])
+pt4 = np.array([0,-0.243,0.017/2])
+transf = tf.transform_matrix_from_line_segments(pt1, pt2, pt3, pt4)
+new_points = frames.transform_points(transf, points)
 # weights = np.array([0.01,0.01,1,0,1,1])
 def drawBezier(points, weights, t):
     newpoints = np.zeros(points.shape)
     def drawCurve(points, weights, t):
         # print("ent1")
         if(points.shape[0]==1):
-            return [points[0,0]/weights[0], points[0,1]/weights[0]]
+            return [points[0,0]/weights[0], points[0,1]/weights[0], points[0,2]/weights[0]]
         else:
             newpoints=np.zeros([points.shape[0]-1, points.shape[1]])
             newweights=np.zeros(weights.size)
             for i in np.arange(newpoints.shape[0]):
                 x = (1-t) * points[i,0] + t * points[i+1,0]
                 y = (1-t) * points[i,1] + t * points[i+1,1]
+                z = (1-t) * points[i,2] + t * points[i+1,2]
                 w = (1-t) * weights[i] + t*weights[i+1]
                 newpoints[i,0] = x
                 newpoints[i,1] = y
+                newpoints[i,2] = z
                 newweights[i] = w
             #   print(newpoints, newweights)
             # print("end")
@@ -151,14 +166,35 @@ def drawBezier(points, weights, t):
     if(t<=1):
         return drawCurve(newpoints, weights, t)
     if(t>1):
-        return [points[-1,0]+ (t-1)*(points[0,0] - points[-1,0]), -0.243]
+        return points[-1]+ (t-1)*(points[0] - points[-1])
 
-tf = frames.TransformManager()
-footstep_initial = frames.Point('FL',tf,0,0,0)
-footstep_initial = frames.Point('FL',tf,0,0,0.068)
+x= np.zeros(200)
+y =np.zeros(200)
+z =np.zeros(200)
+count = 0
+# print(drawBezier(points,weights,1.1))
+for t in np.arange(0,2, 0.01):
+    x[count], y[count],z[count] = drawBezier(np.array(points),weights, t)
+    count = count+1
+# print(x)
+ax.plot(x,y,z,'b', label = 'original')
+
+x= np.zeros(200)
+y =np.zeros(200)
+z =np.zeros(200)
+count = 0
+# print(drawBezier(np.array(new_points),weights,1.1))
+print(points, new_points)
+for t in np.arange(0,2, 0.01):
+    x[count], y[count],z[count] = drawBezier(np.array(new_points),weights, t)
+    count = count+1
+# print(x)
+ax.plot(x,y,z,'g', label = 'transformed')
+plt.legend()
+plt.show()
 
 def drawBezierBetweenFootsteps(footstep_initial, footstep_final):
-
+    
     pass
 
 

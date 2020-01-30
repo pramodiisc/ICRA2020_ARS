@@ -103,7 +103,8 @@ class TransformManager():
     
     def transform_matrix_from_line_segments(self, ls11,ls12,LS11,LS12):
         """ Returns a 4*4 transformation matrix (numpy array) that when multiplied with line segments in the 
-        initial frame, leads to line segments in the target frame as given. Inputs:
+        initial frame, leads to line segments in the target frame as given.
+        Inputs:
         ls11 : numpy array of shape (1,3) = Line Segment 1 in initial frames initial point
         ls12 : numpy array of shape (1,3) = Line Segment 1 in initial frames final point
         LS11 : numpy array of shape (1,3) = Line Segment 1 in final frames initial point
@@ -117,7 +118,7 @@ class TransformManager():
         rot_matrix = np.zeros([4,4])
         rot_matrix[:-1, :-1] = temp
         rot_matrix[3,3] = 1
-        scale_matrix = np.eye(4)*norm(vec2)/norm(vec1)
+        scale_matrix = np.eye(4)*norm(vec2)/norm(vec1)            
         scale_matrix[3,3] = 1
         trans_to_point = self.translateEuler(LS11)
         return trans_to_point@scale_matrix@rot_matrix@trans_to_origin
@@ -169,37 +170,51 @@ class Vector():
             return np.array([self.x, self.y, self.z])
         else:
             return self.tf.get_transform(self.frame, frame)[:3, :3]@np.array([self.x, self.y, self.z])
-
+def transform_points(transf_matrix, points):
+    """
+    Transforms a list of points by the given transformation matrix
+    Inputs:
+    transf_matrix: numpy (4*4) array
+    points: list of numpy (1*3) arrays
+    Returns:
+    transformed_points: list of numpy (1*3) arrays
+    """
+    temp_pts = [np.array([x[0],x[1],x[2],1]) for x in points]
+    newpts = []
+    for pt in temp_pts:
+        newpts.append((transf_matrix@pt)[:3])
+    return newpts
+    pass
 if(__name__ == "__main__"):
     
-    ls11 = np.array([0,0,0])
-    ls12 = np.array([1,0,0])
-    LS11 = np.array([0,1,0])
-    LS12 = np.array([0,0,0])
-    tf = TransformManager()
-    # print(tf.transform_matrix_from_line_segments(ls11, ls12, LS11, LS12)@np.array([1,0,0,1]))
-    norm = lambda vec: (vec[0]**2 + vec[1]**2 + vec[2]**2)**0.5
+    # ls11 = np.array([0,0,0])
+    # ls12 = np.array([1,0,0])
+    # LS11 = np.array([0,1,0])
+    # LS12 = np.array([0,0,0])
+    # tf = TransformManager()
+    # # print(tf.transform_matrix_from_line_segments(ls11, ls12, LS11, LS12)@np.array([1,0,0,1]))
+    # norm = lambda vec: (vec[0]**2 + vec[1]**2 + vec[2]**2)**0.5
 
-    isCorrect = True
-    for i in np.arange(10000):
-        p1 = np.random.randn(3)
-        p2 = np.random.randn(3)
-        p3 = np.random.randn(3)
-        p4 = np.random.randn(3)
-        # p4 = p3 + (norm(p2 - p1)/norm(p4-p3))*(p4-p3)
-        mat = tf.transform_matrix_from_line_segments(p1, p2, p3, p4)
-        _p1 = np.array([p1[0], p1[1], p1[2], 1])
-        _p2 = np.array([p2[0], p2[1], p2[2], 1])
-        _p3 = np.array([p3[0], p3[1], p3[2], 1])
-        _p4 = np.array([p4[0], p4[1], p4[2], 1])
-        v1 = mat@_p1 - _p3
-        v2 = mat@_p2 - _p4
-        if(norm(v1)+norm(v2) >= 0.001):
-            print(v1)
-            isCorrect = False
+    # isCorrect = True
+    # for i in np.arange(10000):
+    #     p1 = np.random.randn(3)
+    #     p2 = np.random.randn(3)
+    #     p3 = np.random.randn(3)
+    #     p4 = np.random.randn(3)
+    #     # p4 = p3 + (norm(p2 - p1)/norm(p4-p3))*(p4-p3)
+    #     mat = tf.transform_matrix_from_line_segments(p1, p2, p3, p4)
+    #     _p1 = np.array([p1[0], p1[1], p1[2], 1])
+    #     _p2 = np.array([p2[0], p2[1], p2[2], 1])
+    #     _p3 = np.array([p3[0], p3[1], p3[2], 1])
+    #     _p4 = np.array([p4[0], p4[1], p4[2], 1])
+    #     v1 = mat@_p1 - _p3
+    #     v2 = mat@_p2 - _p4
+    #     if(norm(v1)+norm(v2) >= 0.001):
+    #         print(v1)
+    #         isCorrect = False
 
-    if(isCorrect):
-        print("passed rot+ trans test")
+    # if(isCorrect):
+    #     print("passed rot+ trans test")
     # isCorrect = True
     # for i in np.arange(100000):
     #     v1 = np.random.randn(3)
@@ -213,3 +228,7 @@ if(__name__ == "__main__"):
     
     # if(isCorrect):
     #     print("Passed rotation test")
+    pts = [np.array([1,0,0]), np.array([0,-1,0]), np.array([0,0,1])]
+    tf = TransformManager()
+    new_pts = transform_points(tf.translateEuler(np.array([1,1,1])), pts)
+    print(new_pts)
