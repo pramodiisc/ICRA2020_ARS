@@ -7,6 +7,8 @@
 # limitations under the License.
 
 """Utilities for realizing walking controllers."""
+import sys, os
+sys.path.append(os.path.realpath('../..'))
 
 from __future__ import absolute_import
 from __future__ import division
@@ -17,6 +19,8 @@ import os
 import numpy as np
 from scipy.linalg import solve
 import matplotlib.pyplot as plt
+import pybRL.utils.frames as frames
+import pybrl.envs.bezier_space as bezier
 PI = np.pi
 
 @dataclass
@@ -78,6 +82,7 @@ class WalkingController():
         self.front_right = leg_data('fr')
         self.back_left = leg_data('bl')
         self.back_right = leg_data('br')
+        self.legs = {'fl': self.front_left,'fr': self.front_right,'br': self.back_right,'bl': self.back_left }
         print('#########################################################')
         print('This training is for',gait_type)
         print('#########################################################')
@@ -98,119 +103,6 @@ class WalkingController():
         #New calculation
         self._pts = np.array([[-0.068,-0.24],[-0.115,-0.24],[-0.065,-0.145],[0.065,-0.145],[0.115,-0.24],[0.068,-0.24]])
     
-    def set_b_value(self):
-        if(self.gait == "trot" or self.gait == "bound" or self.gait == "walk"):
-            self.front_left.b = 1
-            self.front_right.b = -1
-            self.back_left.b = -1
-            self.back_right.b = 1
-        elif(self.gait == "sidestep_left"):
-            self.front_left.b = 1
-            self.front_right.b = -1
-            self.back_left.b = 1
-            self.back_right.b = -1
-        elif(self.gait == "sidestep_right"):
-            self.front_left.b = -1
-            self.front_right.b = 1
-            self.back_left.b = -1
-            self.back_right.b = 1
-        elif(self.gait == "turn_left"):
-            self.front_left.b = -1
-            self.front_right.b = 1
-            self.back_left.b = 1
-            self.back_right.b = -1
-        elif(self.gait == "turn_right"):
-            self.front_left.b = 1
-            self.front_right.b = -1
-            self.back_left.b = -1
-            self.back_right.b = 1
-
-    def set_gamma_value(self):
-        if(self.gait == "trot" or self.gait == "bound" or self.gait == "walk"):
-            self.gamma = PI/2
-        elif(self.gait == "sidestep_left"):
-            self.gamma = PI
-        elif(self.gait == "sidestep_right"):
-            self.gamma = 0
-        elif(self.gait == "turn_left"):
-            self.gamma = PI/4
-        elif(self.gait == "turn_right"):
-            self.gamma = 3*PI/4
-        elif(self.gait == "backward_trot" or self.gait == "backward_bound" or self.gait == "backward_walk"):
-            self.gamma = -PI/2
-
-    def update_leg_theta(self,theta):
-        """ Depending on the gait, the theta for every leg is calculated"""
-        def constrain_theta(theta):
-            theta = np.fmod(theta, 2*PI)
-            if(theta < 0):
-                theta = theta + 2*PI
-            return theta
-        self.front_right.theta = constrain_theta(theta+self._phase.front_right)
-        self.front_left.theta = constrain_theta(theta+self._phase.front_left)
-        self.back_right.theta = constrain_theta(theta+self._phase.back_right)
-        self.back_left.theta = constrain_theta(theta+self._phase.back_left)
-    def set_leg_gamma(self):
-        if(self.gait == "turn_left" ):
-            self.front_right.gamma = self.gamma
-            self.front_left.gamma = PI + self.gamma
-            self.back_right.gamma = -1*(PI + self.gamma)
-            self.back_left.gamma =-1*self.gamma
-        elif(self.gait == "turn_right"):
-            self.front_left.gamma = self.gamma
-            self.front_right.gamma = PI + self.gamma
-            self.back_left.gamma = -1*(PI + self.gamma)
-            self.back_right.gamma =-1*self.gamma
-
-        else:
-            self.front_left.gamma = self.gamma
-            self.front_right.gamma = PI - self.gamma
-            self.back_left.gamma = self.gamma
-            self.back_right.gamma = PI - self.gamma
-
-        
-
-    def transform_action_to_motor_joint_command3(self, theta, action):
-        cubic_spline = lambda coeffts, t: coeffts[0] + t*coeffts[1] + t*t*coeffts[2] + t*t*t*coeffts[3]
-        spline_fit = lambda y0, y1, d0, d1: np.array([y0, d0, 3*(y1-y0) -2*d0 - d1, 2*(y0 - y1) + d0 + d1 ])
-        action = convert_action_to_polar_coordinates(action)
-        n = action.size -1
-        Legs = namedtuple('legs', 'front_right front_left back_right back_left')
-        legs = Legs(front_right = self.front_right, front_left = self.front_left, back_right = self.back_right, back_left = self.back_left)
-        count = 0
-        self.update_leg_theta(theta)
-        for leg in legs:
-            idx = np.mod(np.floor((leg.theta*n)/(2*PI)),n)
-            idx = int(idx)
-            tau = (leg.theta - 2*PI*(idx)/n) /(2*PI/n)
-            y0 = action[idx]
-            y1 = action[idx+1]
-            y_center = -0.195
-            if idx == 0 :
-                d0 = 0 # Slope at start-point is zero
-            else:
-                d0 = (action[idx+1] - action[idx-1])/2 # Central difference
-            if idx == n-1:
-                d1 = 0 # Slope at end-point is zero
-            else:
-                d1 = (action[idx+2] - action[idx])/2 # Central difference
-            coeffts = spline_fit(y0, y1, d0, d1)
-            leg.r = cubic_spline(coeffts, tau)
-            leg.x = leg.r * np.cos(leg.theta)*np.sin(leg.gamma)
-            leg.y = leg.r * np.sin(leg.theta) + y_center
-            leg.z = leg.r * np.cos(leg.gamma)*(1 - leg.b * np.cos(leg.theta))
-            leg.z = np.abs(leg.z)
-            leg.motor_knee, leg.motor_hip, _, _ = self._inverse_stoch2(leg.x, leg.y, self._leg)
-            leg.motor_hip = leg.motor_hip + self.MOTOROFFSETS[0]
-            leg.motor_knee = leg.motor_knee + self.MOTOROFFSETS[1]
-            #-1 is also due to a coordinate difference
-            leg.motor_abduction = constrain_abduction(np.arctan2(leg.z, -leg.y))
-        leg_motor_angles = [legs.front_left.motor_hip, legs.front_left.motor_knee, legs.front_right.motor_hip, legs.front_right.motor_knee,
-        legs.back_left.motor_hip, legs.back_left.motor_knee, legs.back_right.motor_hip, legs.back_right.motor_knee]
-        leg_abduction_angles = [legs.front_left.motor_abduction, legs.front_right.motor_abduction, legs.back_left.motor_abduction,
-        legs.back_right.motor_abduction]
-        return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8) 
-    
     def transform_action_to_motor_joint_command_bezier(self, theta, action, radius):
         Legs = namedtuple('legs', 'front_right front_left back_right back_left')
         legs = Legs(front_right = self.front_right, front_left = self.front_left, back_right = self.back_right, back_left = self.back_left)
@@ -227,36 +119,43 @@ class WalkingController():
             leg.motor_knee, leg.motor_hip,leg.motor_abduction = self._inverse_3D(leg.x, leg.y, leg.z, self._leg)
             leg.motor_hip = leg.motor_hip + self.MOTOROFFSETS[0]
             leg.motor_knee = leg.motor_knee + self.MOTOROFFSETS[1]
-        
         leg_motor_angles = [legs.front_left.motor_hip, legs.front_left.motor_knee, legs.front_right.motor_hip, legs.front_right.motor_knee,
         legs.back_left.motor_hip, legs.back_left.motor_knee, legs.back_right.motor_hip, legs.back_right.motor_knee]
         leg_abduction_angles = [legs.front_left.motor_abduction, legs.front_right.motor_abduction, legs.back_left.motor_abduction,
         legs.back_right.motor_abduction]
         return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8)
     
-    def footstep_to_motor_joint_command(self, theta, footstep, footstep_last):
-        """Provides footstep position. Generates bezier curve with given weights to follow the footstep position"""
-        Legs = namedtuple('legs', 'front_right front_left back_right back_left')
-        legs = Legs(front_right = self.front_right, front_left = self.front_left, back_right = self.back_right, back_left = self.back_left)
-        #I give initial and final points and it calculates bezier joining said points
-        self._update_leg_step_length_footstep(legs, footstep)
-        self.update_leg_theta(theta)
+    def footstep_to_motor_joint_command_per_leg(self, leg_name, theta, prev_footstep, next_footstep, weights = np.array([1,1,1,1,1,1])):
+        """ Generates x,y,z point for a leg given a footstep position, prev_footstep_position, tau and weights of the corresponding bezier curve"""
+        norm = lambda vec: (vec[0]**2 + vec[1]**2 + vec[2]**2)**0.5
+        current_leg = self.legs[leg_name]
+        current_leg.step_length = norm(next_footstep - prev_footstep)
+        current_leg.pts = self._pts
+        tau = leg.theta/PI
+        current_leg.pts[0,0] = -current_leg.step_length/2
+        current_leg.pts[-1,0] = current_leg.step_length/2
+        trans = frames.transform_matrix_from_line_segments(current_leg.pts[0], current_leg.pts[-1], prev_footstep, next_footstep)
+        current_leg.pts = np.array(frames.transform_points(trans, current_leg.pts))
+        x,y,z = self.drawBezier(current_leg.pts, weights, tau)
+        current_leg.motor_knee, current_leg.motor_hip,current_leg.motor_abduction = self._inverse_3D(leg.x, leg.y, leg.z, self._leg)
+        current_leg.motor_hip = current_leg.motor_hip + self.MOTOROFFSETS[0]
+        current_leg.motor_knee = current_leg.motor_knee + self.MOTOROFFSETS[1]
+        return leg.motor_hip, leg.motor_knee, leg.motor_abduction  
+
+    def transform_footsteps_to_motor_joint_commands(self, footsteps_prev, footsteps, theta, weights):
+        """
+        footsteps: this is a dictionary [name: np.array([x,y,z])] 
+        """
+        legs = ['fl','fr','bl','br']
+        leg_abduction_angles = []
+        leg_motor_angles = []
         for leg in legs:
-            tau = leg.theta/PI
-            weights = np.ones(6)
-            x,y = self.drawBezier(self._pts, weights, tau)
-            #We need to move it also, so that when tau = 0, it reaches footstep_last, tau = 1 it reaches footstep_current
-            leg.x, leg.y, leg.z = np.array([[np.cos(leg.phi),0,np.sin(leg.phi)],[0,1,0],[-np.sin(leg.phi),0, np.cos(leg.phi)]])@np.array([x,y,0])
-            leg.motor_knee, leg.motor_hip,leg.motor_abduction = self._inverse_3D(leg.x, leg.y, leg.z, self._leg)
-            leg.motor_hip = leg.motor_hip + self.MOTOROFFSETS[0]
-            leg.motor_knee = leg.motor_knee + self.MOTOROFFSETS[1]
-        
-        leg_motor_angles = [legs.front_left.motor_hip, legs.front_left.motor_knee, legs.front_right.motor_hip, legs.front_right.motor_knee,
-        legs.back_left.motor_hip, legs.back_left.motor_knee, legs.back_right.motor_hip, legs.back_right.motor_knee]
-        leg_abduction_angles = [legs.front_left.motor_abduction, legs.front_right.motor_abduction, legs.back_left.motor_abduction,
-        legs.back_right.motor_abduction]
+            hip, knee, abd = self.footstep_to_motor_joint_command_per_leg(leg, theta, footsteps_prev[leg], footsteps[leg], weights)
+            leg_abduction_angles.append(abd)
+            leg_motor_angles.append(hip, knee)
         return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8)
-    
+
+
     def run_traj2d(self, theta, fl_rfunc, fr_rfunc, bl_rfunc, br_rfunc):
         """
         Provides an interface to run trajectories given r as a function of theta and abduction angles
@@ -371,32 +270,6 @@ class WalkingController():
         motor_knee, motor_hip, _, _ = self._inverse_stoch2(new_coords[0], -new_coords[1], Leg)
         return [motor_knee, motor_hip, theta]
     
-    def _update_leg_phi(self, radius):
-        if(radius >= 0):
-            self.front_left.phi =  np.arctan2(self.body_length/2, radius + self.body_width/2)
-            self.front_right.phi = -np.arctan2(self.body_length/2, radius - self.body_width/2)
-            self.back_left.phi = -np.arctan2(self.body_length/2, radius + self.body_width/2)
-            self.back_right.phi =  np.arctan2(self.body_length/2, radius - self.body_width/2)
-        if(radius<0):
-            radius = -1*radius
-            self.front_right.phi =  np.arctan2(self.body_length/2, radius + self.body_width/2)
-            self.front_left.phi = -np.arctan2(self.body_length/2, radius - self.body_width/2)
-            self.back_right.phi = -np.arctan2(self.body_length/2, radius + self.body_width/2)
-            self.back_left.phi =  np.arctan2(self.body_length/2, radius - self.body_width/2)
-
-    
-    def _update_leg_step_length(self, step_length, radius):
-        if(radius >= 0):
-            self.front_right.step_length = step_length * (radius - self.body_width/2)/radius
-            self.front_left.step_length = step_length * (radius + self.body_width/2)/radius
-            self.back_right.step_length = step_length * (radius - self.body_width/2)/radius
-            self.back_left.step_length = step_length * (radius + self.body_width/2)/radius
-        if(radius < 0):
-            self.front_left.step_length = step_length * (radius - self.body_width/2)/radius
-            self.front_right.step_length = step_length * (radius + self.body_width/2)/radius
-            self.back_left.step_length = step_length * (radius - self.body_width/2)/radius
-            self.back_right.step_length = step_length * (radius + self.body_width/2)/radius
-
     def drawBezier(self, points, weights, t):
         newpoints = np.zeros(points.shape)
         def drawCurve(points, weights, t):
@@ -425,15 +298,6 @@ class WalkingController():
         if(t>1):
             return [points[-1,0]+ (t-1)*(points[0,0] - points[-1,0]), -0.243]
 
-    def _update_leg_step_length_footstep(legs, footstep, last_footstep):
-        legs.front_left.step_length = ((footstep.front_left.x - last_footstep.front_left.x)**2 + (footstep.front_left.z - last_footstep.front_left.z)**2)**0.5
-        legs.front_right.step_length = ((footstep.front_right.x - last_footstep.front_right.x)**2 + (footstep.front_right.z - last_footstep.front_right.z)**2)**0.5
-        legs.back_left.step_length = ((footstep.back_left.x - last_footstep.back_left.x)**2 + (footstep.back_left.z - last_footstep.back_left.z)**2)**0.5
-        legs.back_right.step_length = ((footstep.back_right.x - last_footstep.back_right.x)**2 + (footstep.back_right.z - last_footstep.back_right.z)**2)**0.5
-
-    def _update_leg_transformation_matrix(legs, footstep, last_footstep):
-        
-        pass
 def constrain_abduction(angle):
     if(angle < 0):
         angle = 0

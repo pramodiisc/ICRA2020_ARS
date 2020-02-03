@@ -126,7 +126,6 @@ ax = fig.gca(projection='3d')
 # plt.legend()
 action =np.array([-0.5,1,1,1,1,1])
 weights = (action+1)/2 + 1e-3 # TO prevent 0 from occuring we add 1e-3
-tf = frames.TransformManager()
 points = np.array([[-0.068,-0.243,0],[-0.115,-0.243,0],[-0.065,-0.145,0],[0.065,-0.145,0],[0.115,-0.243,0],[0.068,-0.243,0]])
 step_length = 0.017
 points[0,0]= -step_length/2
@@ -135,7 +134,7 @@ pt1 = points[0]
 pt2 = points[-1]
 pt3 = np.array([0,-0.243,-0.017/2])
 pt4 = np.array([0,-0.243,0.017/2])
-transf = tf.transform_matrix_from_line_segments(pt1, pt2, pt3, pt4)
+transf = frames.transform_matrix_from_line_segments(pt1, pt2, pt3, pt4)
 new_points = frames.transform_points(transf, points)
 # weights = np.array([0.01,0.01,1,0,1,1])
 def drawBezier(points, weights, t):
@@ -198,3 +197,7 @@ def drawBezierBetweenFootsteps(footstep_initial, footstep_final):
     pass
 
 
+
+if (__name__ == "__main__"):
+    
+    pass
