@@ -101,47 +101,8 @@ class TransformManager():
         pass    
     
     
-    def transform_matrix_from_line_segments(self, ls11,ls12,LS11,LS12):
-        """ Returns a 4*4 transformation matrix (numpy array) that when multiplied with line segments in the 
-        initial frame, leads to line segments in the target frame as given.
-        Inputs:
-        ls11 : numpy array of shape (1,3) = Line Segment 1 in initial frames initial point
-        ls12 : numpy array of shape (1,3) = Line Segment 1 in initial frames final point
-        LS11 : numpy array of shape (1,3) = Line Segment 1 in final frames initial point
-        LS12 : numpy array of shape (1,3) = Line Segment 1 in final frames final point
-          """
-        norm = lambda vec: (vec[0]**2 + vec[1]**2 + vec[2]**2)**0.5
-        vec1 = ls12 - ls11
-        vec2 = LS12 - LS11
-        trans_to_origin = self.translateEuler(-ls11)
-        temp = self.rotate_matrix_from_vectors(vec1, vec2)
-        rot_matrix = np.zeros([4,4])
-        rot_matrix[:-1, :-1] = temp
-        rot_matrix[3,3] = 1
-        scale_matrix = np.eye(4)*norm(vec2)/norm(vec1)            
-        scale_matrix[3,3] = 1
-        trans_to_point = self.translateEuler(LS11)
-        return trans_to_point@scale_matrix@rot_matrix@trans_to_origin
     
-    def rotate_matrix_from_vectors(self, vec1, vec2):
-        """Returns a *Rotation matrix that rotates vec1 to vec2 (Thus magnitude of vectors dont matter), about the axis defined cross(vec1, vec2) 
-        Uses Rodriguez Formula in its implementation"""
-        norm = lambda vec: (vec[0]**2 + vec[1]**2 + vec[2]**2)**0.5
-        nvec1 = vec1/norm(vec1)
-        nvec2 = vec2/norm(vec2)
-        if(norm(nvec1 - nvec2)<= 0.001):
-            return np.eye(3)
-        if(norm(nvec1 + nvec2)<= 0.001):
-            return np.eye(3)*-1
-        cross = lambda v1, v2 : np.array([v1[1]*v2[2] - v2[1]*v1[2], v1[2]*v2[0] - v1[0]*v2[2], v1[0]*v2[1] - v1[1]*v2[0]]) 
-        dot = lambda v1,v2: v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2]
-        skew_symmetric = lambda vec: np.array([[0,-vec[2],vec[1]],[vec[2],0,-vec[0]],[-vec[1],vec[0],0]])
-        costh = dot(nvec1, nvec2)
-        axis = cross(nvec1, nvec2)
-        AXIS = skew_symmetric(axis)
-        sinth = (axis[0]**2+ axis[1]**2 + axis[2]**2)**0.5
-        rot = np.eye(3) + AXIS + ((1-costh)/(sinth**2))*(AXIS@AXIS)
-        return rot    
+  
 
 class Point():
     def __init__(self, frame, transform_manager, x=0, y=0, z=0):
@@ -170,6 +131,41 @@ class Vector():
             return np.array([self.x, self.y, self.z])
         else:
             return self.tf.get_transform(self.frame, frame)[:3, :3]@np.array([self.x, self.y, self.z])
+
+def rotateEuler(axis, angle):
+    """Returns a numpy array corresponding to transformation matrix about axis by angle radians.
+    Axis is a string 'X', 'Y', 'Z' and angle is in radians """
+    if(axis == 'Z'):
+        return np.array([[cos(angle), -sin(angle),0,0],[sin(angle), cos(angle),0,0],[0,0,1,0],[0,0,0,1]])
+    if(axis == 'Y'):
+        return np.array([[cos(angle),0,sin(angle),0],[0,1,0,0],[-sin(angle),0,cos(angle),0],[0,0,0,1]])
+    if(axis == 'X'):
+        return np.array([[1,0,0,0],[0,cos(angle), -sin(angle),0],[0,sin(angle), cos(angle),0],[0,0,0,1]])
+
+def translateEuler(trans):
+    """ Returns a numpy array corresponding to translating by the input given"""
+    return np.array([[1,0,0,trans[0]],[0,1,0,trans[1]],[0,0,1,trans[2]],[0,0,0,1]])
+
+def rotate_matrix_from_vectors(vec1, vec2):
+    """Returns a *Rotation matrix that rotates vec1 to vec2 (Thus magnitude of vectors dont matter), about the axis defined cross(vec1, vec2) 
+    Uses Rodriguez Formula in its implementation"""
+    norm = lambda vec: (vec[0]**2 + vec[1]**2 + vec[2]**2)**0.5
+    nvec1 = vec1/norm(vec1)
+    nvec2 = vec2/norm(vec2)
+    if(norm(nvec1 - nvec2)<= 0.001):
+        return np.eye(3)
+    if(norm(nvec1 + nvec2)<= 0.001):
+        return np.eye(3)*-1
+    cross = lambda v1, v2 : np.array([v1[1]*v2[2] - v2[1]*v1[2], v1[2]*v2[0] - v1[0]*v2[2], v1[0]*v2[1] - v1[1]*v2[0]]) 
+    dot = lambda v1,v2: v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2]
+    skew_symmetric = lambda vec: np.array([[0,-vec[2],vec[1]],[vec[2],0,-vec[0]],[-vec[1],vec[0],0]])
+    costh = dot(nvec1, nvec2)
+    axis = cross(nvec1, nvec2)
+    AXIS = skew_symmetric(axis)
+    sinth = (axis[0]**2+ axis[1]**2 + axis[2]**2)**0.5
+    rot = np.eye(3) + AXIS + ((1-costh)/(sinth**2))*(AXIS@AXIS)
+    return rot  
+
 def transform_points(transf_matrix, points):
     """
     Transforms a list of points by the given transformation matrix
@@ -184,7 +180,31 @@ def transform_points(transf_matrix, points):
     for pt in temp_pts:
         newpts.append((transf_matrix@pt)[:3])
     return newpts
-    pass
+
+def transform_matrix_from_line_segments(ls11,ls12,LS11,LS12):
+    """ Returns a 4*4 transformation matrix (numpy array) that when multiplied with line segments in the 
+    initial frame, leads to line segments in the target frame as given.
+    Inputs:
+    ls11 : numpy array of shape (1,3) = Line Segment 1 in initial frames initial point
+    ls12 : numpy array of shape (1,3) = Line Segment 1 in initial frames final point
+    LS11 : numpy array of shape (1,3) = Line Segment 1 in final frames initial point
+    LS12 : numpy array of shape (1,3) = Line Segment 1 in final frames final point
+        """
+    norm = lambda vec: (vec[0]**2 + vec[1]**2 + vec[2]**2)**0.5
+    vec1 = ls12 - ls11
+    vec2 = LS12 - LS11
+    trans_to_origin = translateEuler(-ls11)
+    temp = rotate_matrix_from_vectors(vec1, vec2)
+    rot_matrix = np.zeros([4,4])
+    rot_matrix[:-1, :-1] = temp
+    rot_matrix[3,3] = 1
+    scale_matrix = np.eye(4)*norm(vec2)/norm(vec1)            
+    scale_matrix[3,3] = 1
+    trans_to_point = translateEuler(LS11)
+    return trans_to_point@scale_matrix@rot_matrix@trans_to_origin
+
+def Cross(v1, v2):
+    return np.array([v1[1]*v2[2]- v1[2]*v2[1], v1[2]*v2[0] - v1[0]*v2[2], v1[0]*v2[1] - v2[0]*v1[1]])
 if(__name__ == "__main__"):
     
     # ls11 = np.array([0,0,0])
@@ -228,7 +248,8 @@ if(__name__ == "__main__"):
     
     # if(isCorrect):
     #     print("Passed rotation test")
-    pts = [np.array([1,0,0]), np.array([0,-1,0]), np.array([0,0,1])]
-    tf = TransformManager()
-    new_pts = transform_points(tf.translateEuler(np.array([1,1,1])), pts)
-    print(new_pts)
+    # pts = [np.array([1,0,0]), np.array([0,-1,0]), np.array([0,0,1])]
+    # tf = TransformManager()
+    # new_pts = transform_points(tf.translateEuler(np.array([1,1,1])), pts)
+    # print(new_pts)
+    print(cross([0,1,0],[1,0,0]))
