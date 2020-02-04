@@ -175,10 +175,14 @@ def transform_points(transf_matrix, points):
     Returns:
     transformed_points: list of numpy (1*3) arrays
     """
-    temp_pts = [np.array([x[0],x[1],x[2],1]) for x in points]
-    newpts = []
-    for pt in temp_pts:
-        newpts.append((transf_matrix@pt)[:3])
+    if(type(points)==list):
+        temp_pts = [np.array([x[0],x[1],x[2],1]) for x in points]
+        newpts = []
+        for pt in temp_pts:
+            newpts.append((transf_matrix@pt)[:3])
+    else:
+        temp_pts = np.array([points[0],points[1],points[2],1])
+        newpts=(transf_matrix@temp_pts)[:3]
     return newpts
 
 def transform_matrix_from_line_segments(ls11,ls12,LS11,LS12):
@@ -205,6 +209,11 @@ def transform_matrix_from_line_segments(ls11,ls12,LS11,LS12):
 
 def Cross(v1, v2):
     return np.array([v1[1]*v2[2]- v1[2]*v2[1], v1[2]*v2[0] - v1[0]*v2[2], v1[0]*v2[1] - v2[0]*v1[1]])
+
+def Normalize(v, norm=1.0):
+    mod = np.sqrt(np.sum(v**2))
+    return (v/mod) * norm
+
 if(__name__ == "__main__"):
     
     # ls11 = np.array([0,0,0])
