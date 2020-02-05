@@ -24,7 +24,7 @@ tf.add_transform('FL', 'COM', t_FL)
 tf.add_transform('FR', 'COM', t_FR)
 tf.add_transform('BR', 'COM', t_BR)
 tf.add_transform('BL', 'COM', t_BL)
-
+#How do you handle switching of legs
 
 def calc_footstep(footstep_name, prev_footstep, command):
     vf = get_v_in_footstep_coords(command, footstep_name, prev_footstep)
@@ -77,11 +77,26 @@ def transition_into_stomp(footsteps):
     new_footsteps = {'FL':np.array([0,0,0]), 'FR':np.array([0,0,0]), 'BR':np.array([0,0,0]), 'BL':np.array([0,0,0]), 'tof': tof}
     return new_footsteps
 
-def transition_outof_stomp(vf):
+def transition_outof_stomp(command, stance  = {'FL':-1,'FR':1,'BR':-1,'BL':1}):
     """
-    Assuming we are in STOMP, now given a command, transition out of this stomp position (Need to know which is stance and which is swing?)
+    Assuming we are in STOMP, now given a command, transition out of this stomp position
+    I guess tof gets fixed from this point onward. Need to calculate it accordingly 
     """
-    pass
+    Vmax = 0.3808 #Prolly will change, for now this will hold
+    #What are the equations to decide ToF? 
+    footstep = np.array([0,0,0])
+    legs  = ['FL', 'FR', 'BR', 'BL']
+    vf = {}
+    sl = {}
+    step_length={}
+    new_footsteps = {}
+    for leg in legs:
+        vf[leg] = get_v_in_footstep_coords(command, leg, footstep)
+        sl[leg] = calculate_step_length(footstep, vf[leg])
+        step_length[leg] = (Norm(vf[leg])/0.3808)*np.abs(sl[leg][0])
+        new_footsteps[leg] = stance[leg]*step_length[leg]*vf[leg]
+    new_footsteps['tof'] = 1/5.6 #Will need to clean this up, in future
+    return new_footsteps
 def get_v_in_footstep_coords(command, foot_name, prev_footstep):
     """
     Very important to normalize V in the current optimization framework
@@ -93,7 +108,7 @@ def get_v_in_footstep_coords(command, foot_name, prev_footstep):
     v = command[0]
     omega = command[1]
     r = frames.transform_points(tf.get_transform(foot_name, 'COM'), prev_footstep)
-    v_final = -1*frames.Normalize(v + frames.Cross(omega, r), v_norm_max)
+    v_final = frames.Normalize(v + frames.Cross(omega, r), v_norm_max)
     v_final = tf.get_transform('COM', foot_name)[:3, :3]@v_final
     return v_final
 
@@ -135,5 +150,10 @@ if(__name__ == "__main__"):
     # calc_footstep(fname, fpos, command)
     
     #TEST TRANSITION INTO STOMP
-    footsteps = {'FL': np.array([0.068,0,0]),'FR': np.array([-0.068,0,0]),'BR': np.array([0.068,0,0]),'BL': np.array([-0.068,0,0])}
-    print(transition_into_stomp(footsteps))
+    # footsteps = {'FL': np.array([0.068,0,0]),'FR': np.array([-0.068,0,0]),'BR': np.array([0.068,0,0]),'BL': np.array([-0.068,0,0])}
+    # print(transition_into_stomp(footsteps))
+
+    #TEST TRANSITION OUTOF STOMP
+    command = [np.array([1,0,0]), np.array([0,0,0])]
+    newft = transition_outof_stomp(command)
+    print(newft)
