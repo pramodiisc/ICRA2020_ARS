@@ -25,7 +25,14 @@ tf.add_transform('BR', 'COM', t_BR)
 tf.add_transform('BL', 'COM', t_BL)
 
 
-def linear_program_ver1(prev_footstep, command):
+def calc_footstep(footstep_name, prev_footstep, command):
+    vf = get_v_in_footstep_coords(command, footstep_name, prev_footstep)
+    sl = calculate_step_length(prev_footstep, vf)
+    # print(vf, sl)
+    tof, sl = linear_program_ver1(vf, sl) 
+    print(prev_footstep+vf*tof)
+    pass
+def linear_program_ver1(vf, sl):
     """ The optimization problem was first tested in Mathematica in opt_test.nb, Then the
     final matrices are being put here. CVXOpt needs all of them to be in <= form, no >=  form
     x = [tof, step_length]
@@ -39,23 +46,23 @@ def linear_program_ver1(prev_footstep, command):
     cvxopt.solvers.options['glpk'] = {'msg_lev': 'GLP_MSG_OFF'}
     cvxopt.solvers.options['show_progress'] = False
     #Auxiliary functions taken from Mathematica
-    minToF = 1/2.8
-    maxToF = 1
-    maxStepLength = 0.068*2
-    # maxToFatFootstep = lambda pos: ((minToF - maxToF)/(maxStepLength/2))*np.abs(pos) + maxToF
-    # stepLengthRangeatPos = lambda pos: np.array([(-maxStepLength/2) - pos, (maxStepLength/2) - pos])
-    tofMax = ((minToF - maxToF)/(maxStepLength/2))*np.abs(prev_footstep[0]) + maxToF
-    # tofMax = 1
-    step_length_min, step_length_max= np.array([(-maxStepLength/2) - prev_footstep[0], (maxStepLength/2) - prev_footstep[0]])
-    currentVx = command[0]
+    step_length_min = np.min(sl)
+    step_length_max = np.max(sl)
+    currentV = np.sqrt(np.sum(vf**2))    
     c = cvxopt.matrix([-1.0, 0.0])
-    A = cvxopt.matrix([[-1.0, 1.0, 0.0, 0.0, currentVx, -currentVx],[0.0, 0.0, -1.0, 1.0, -1.0, 1.0]])
-    b = cvxopt.matrix([0.0, tofMax, step_length_min, step_length_max, 0.0, 0.0])
+    A = cvxopt.matrix([[-1.0, 0.0, 0.0, currentV, -currentV],[0.0, -1.0, 1.0, -currentV, currentV]])
+    b = cvxopt.matrix([0.0, step_length_min, step_length_max, 0.0, 0.0])
     sol = cvxopt.solvers.lp(c,A,b, solver = 'cvxopt_glpk')
-    print(step_length_min, step_length_max, tofMax)
-    print(sol['x'])
+    # print(step_length_min, step_length_max)
+    # print(sol['x'])
     return sol['x']
 
+def linear_program_ver2(vf, sl):
+    """
+    A simple linear program to optimize, I should probably optimize for all legs at a time
+    """
+
+    return None
 def get_v_in_footstep_coords(command, foot_name, prev_footstep):
     """
     Very important to normalize V in the current optimization framework
@@ -95,11 +102,15 @@ if(__name__ == "__main__"):
     # print(time_elapsed)
     #There is problem with the optimization, gives me infeasible conditions when Mathematica finds feasible solutions
     #tof of 0 leads to infinite frequency, How to handle 
-    footstep = np.array([0,0,0])
+    # footstep = np.array([0,0,0])
+    # command = [np.array([1,0,0]), np.array([0,0,0])]
+    # vf = get_v_in_footstep_coords(command,'FL',footstep)
+    # # vf = frames.Normalize(vf)
+    # print("vf: ",vf)
+    # sl = calculate_step_length(footstep, vf)
+    # print(sl)
+    # print(footstep+sl[0]*vf, footstep+sl[1]*vf)
+    fname = 'FL'
+    fpos = np.array([0.1,0,0])
     command = [np.array([1,0,0]), np.array([0,0,0])]
-    vf = get_v_in_footstep_coords(command,'FL',footstep)
-    # vf = frames.Normalize(vf)
-    print("vf: ",vf)
-    sl = calculate_step_length(footstep, vf)
-    print(sl)
-    print(footstep+sl[0]*vf, footstep+sl[1]*vf)
+    calc_footstep(fname, fpos, command)
