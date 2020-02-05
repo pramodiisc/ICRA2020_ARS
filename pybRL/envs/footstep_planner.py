@@ -13,6 +13,8 @@ bodyWidth = 0.24
 bodyLength = 0.37
 stepLengthx = 0.136
 stepLengthz = 0.017
+thetaMax = 0.0457*2 #Prolly
+
 #En
 tf = frames.TransformManager()
 t_FL = np.array([[1,0,0,bodyLength/2],[0,1,0,0],[0,0,-1,-bodyWidth/2],[0,0,0,1]])
@@ -26,6 +28,7 @@ tf.add_transform('BR', 'COM', t_BR)
 tf.add_transform('BL', 'COM', t_BL)
 #How do you handle switching of legs
 
+#UPDATE 5:12 FEB 5TH, IM REMOVING TIME OF FLIGHT CONTROL TO GET SOMETHING WORKING, WILL COME BACK TO IT LATER// DELETE THIS COMMENT WHEN YOU COME BACK TO IT
 def calc_footstep(footstep_name, prev_footstep, command):
     vf = get_v_in_footstep_coords(command, footstep_name, prev_footstep)
     sl = calculate_step_length(prev_footstep, vf)
@@ -94,9 +97,11 @@ def transition_outof_stomp(command, stance  = {'FL':-1,'FR':1,'BR':-1,'BL':1}):
         vf[leg] = get_v_in_footstep_coords(command, leg, footstep)
         sl[leg] = calculate_step_length(footstep, vf[leg])
         step_length[leg] = (Norm(vf[leg])/0.3808)*np.abs(sl[leg][0])
-        new_footsteps[leg] = stance[leg]*step_length[leg]*vf[leg]
+        new_footsteps[leg] = stance[leg]*step_length[leg]*vf[leg] #This is prolly in COM Frame
     new_footsteps['tof'] = 1/5.6 #Will need to clean this up, in future
     return new_footsteps
+
+#Let us vary each value from 0 to 1, 1 means max steplength, 0 means minimum steplength
 def get_v_in_footstep_coords(command, foot_name, prev_footstep):
     """
     Very important to normalize V in the current optimization framework
@@ -108,7 +113,9 @@ def get_v_in_footstep_coords(command, foot_name, prev_footstep):
     v = command[0]
     omega = command[1]
     r = frames.transform_points(tf.get_transform(foot_name, 'COM'), prev_footstep)
-    v_final = frames.Normalize(v + frames.Cross(omega, r), v_norm_max)
+    v_final = v + frames.Cross(omega, r)
+    if(Norm(v_final) > v_norm_max):
+        v_final = Normalize(v_final, v_norm_max)
     v_final = tf.get_transform('COM', foot_name)[:3, :3]@v_final
     return v_final
 
@@ -126,6 +133,26 @@ def calculate_step_length(footstep, velocity):
          + 2*px*pz*vx*vz - px**2*vz**2 + (stepLengthx**2*vz**2)/4.))\
         /(stepLengthx*stepLengthz))/-((4*vx**2)/stepLengthx**2 + (4*vz**2)/stepLengthz**2)
     return t_1,t_2
+
+def calculate_step_length_ver2(command):
+    v = command[0]
+    omega = command[1]
+    norm = np.sqrt(v[0]**2 + v[2]**2 + omega[2]**2)
+    stepLengthxMax = 1
+    pass
+
+def constrainEllipseWorkspace(pt):
+    x,y,z = pt
+    theta = np.arctan2(x,z)
+    xmax = 0.068*np.sin(theta)
+    zmax = 0.0085*np.cos(theta)
+    if(abs(x)>abs(xmax)):
+        x=xmax
+    if(abs(z)>abs(zmax)):
+        z=zmax
+
+    vec = np.array([x,0,z])
+    return vec
 if(__name__ == "__main__"):
     #Testing ver1 code
     #Right now it seems like it takes 5 Micro Seconds, which is very good, as long as it's less than 0.1ms its fine
@@ -154,6 +181,15 @@ if(__name__ == "__main__"):
     # print(transition_into_stomp(footsteps))
 
     #TEST TRANSITION OUTOF STOMP
-    command = [np.array([1,0,0]), np.array([0,0,0])]
-    newft = transition_outof_stomp(command)
-    print(newft)
+    # command = [np.array([0,0,0]), np.array([0,1,0])] #Definitely not working
+    # newft = transition_outof_stomp(command)
+    # print(newft)
+    
+    #TEST CONSTRAIN ELLIPSE WORKSPACE
+    lies_on_ellipse = True
+    for i  in np.arange(1000):
+        x,y,z = constrainEllipseWorkspace(np.random.rand(3)*100)
+        if(abs((x/0.068)**2+(z/0.0085)**2 - 1) >= 0.001):
+            lies_on_ellipse = False
+    if(lies_on_ellipse):
+        print("pass test")
