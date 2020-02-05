@@ -213,7 +213,8 @@ def Cross(v1, v2):
 def Normalize(v, norm=1.0):
     mod = np.sqrt(np.sum(v**2))
     return (v/mod) * norm
-
+def Norm(v1):
+    return np.sqrt(np.sum(v1**2))
 if(__name__ == "__main__"):
     
     # ls11 = np.array([0,0,0])
@@ -261,4 +262,4 @@ if(__name__ == "__main__"):
     # tf = TransformManager()
     # new_pts = transform_points(tf.translateEuler(np.array([1,1,1])), pts)
     # print(new_pts)
-    print(cross([0,1,0],[1,0,0]))
+    print(Norm(np.array([1,1,1])))
