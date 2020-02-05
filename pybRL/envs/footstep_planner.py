@@ -7,6 +7,7 @@ from cvxopt import matrix, solvers
 import cvxopt
 import time
 import pybRL.utils.frames as frames
+from pybRL.utils.frames import Norm, Cross, Normalize
 # Robot constants
 bodyWidth = 0.24
 bodyLength = 0.37
@@ -61,8 +62,26 @@ def linear_program_ver2(vf, sl):
     """
     A simple linear program to optimize, I should probably optimize for all legs at a time
     """
-
     return None
+
+def transition_into_stomp(footsteps):
+    """
+    Idea: Given 4 legs footstep positions, output next footstep position and tof for each leg so that you enter stomp mode, Basically choose minToF
+    """
+    Vmax = 0.3808 #Prolly will change, for now this will hold
+    fl_dist = Norm(footsteps['FL'])
+    fr_dist = Norm(footsteps['FR'])
+    bl_dist = Norm(footsteps['BL'])
+    br_dist = Norm(footsteps['BR'])
+    tof = np.max(np.array([fl_dist, fr_dist, bl_dist, br_dist]))/Vmax
+    new_footsteps = {'FL':np.array([0,0,0]), 'FR':np.array([0,0,0]), 'BR':np.array([0,0,0]), 'BL':np.array([0,0,0]), 'tof': tof}
+    return new_footsteps
+
+def transition_outof_stomp(vf):
+    """
+    Assuming we are in STOMP, now given a command, transition out of this stomp position (Need to know which is stance and which is swing?)
+    """
+    pass
 def get_v_in_footstep_coords(command, foot_name, prev_footstep):
     """
     Very important to normalize V in the current optimization framework
@@ -110,7 +129,11 @@ if(__name__ == "__main__"):
     # sl = calculate_step_length(footstep, vf)
     # print(sl)
     # print(footstep+sl[0]*vf, footstep+sl[1]*vf)
-    fname = 'FL'
-    fpos = np.array([0.1,0,0])
-    command = [np.array([1,0,0]), np.array([0,0,0])]
-    calc_footstep(fname, fpos, command)
+    # fname = 'FL'
+    # fpos = np.array([0.1,0,0])
+    # command = [np.array([1,0,0]), np.array([0,0,0])]
+    # calc_footstep(fname, fpos, command)
+    
+    #TEST TRANSITION INTO STOMP
+    footsteps = {'FL': np.array([0.068,0,0]),'FR': np.array([-0.068,0,0]),'BR': np.array([0.068,0,0]),'BL': np.array([-0.068,0,0])}
+    print(transition_into_stomp(footsteps))
