@@ -200,10 +200,18 @@ class FootstepPlanner():
         self.footpos = footstep
     
     
-    def update_phase(self):
-        for leg in self.legs:
-            self.phase[leg] = self.phase[leg]*-1
-    
+    def update_phase(self, leg_theta = None):
+        if(leg_theta is None):
+            for leg in self.legs:
+                self.phase[leg] = self.phase[leg]*-1
+        else:
+            for leg in self.legs:
+                if (abs(leg_theta[leg] - 0) <= 0.01):
+                    self.phase[leg] = 1
+                elif (abs(leg_theta[leg] - np.pi) <= 0.01):
+                    self.phase[leg] = -1
+
+
     def update_state(self, state):
         self.state = state
     
@@ -273,11 +281,17 @@ if(__name__ == "__main__"):
     # print(fp.in_stomp())
 
     #TEST FOOTSTEP_PLANNER::PLAN
-    command = [np.array([0,0,1]), np.array([0,0,0])]
+    # command = [np.array([0,0,0]), np.array([0,0,0])]
+    # fp = FootstepPlanner()
+    # fp1 = fp.plan(command)
+    # fp2 = fp.plan(command)
+    # fp3 = fp.plan(command)
+    # fp4 = fp.plan(command)
+    # print(fp1,'\n',fp2,'\n',fp3,'\n',fp4)
+
+    #TEST FOOTSTEP_PLANNER::UPDATE_PHASE
+    command = [np.array([0,0,0]), np.array([0,0,0])]
+    thetas = {'FL':0.001, 'FR':np.pi+0.01, 'BL':np.pi-0.001, 'BR':-0.001}
     fp = FootstepPlanner()
-    fp1 = fp.plan(command)
-    fp2 = fp.plan(command)
-    fp3 = fp.plan(command)
-    fp4 = fp.plan(command)
-    #I would prefer a simple way to animate this
-    print(fp1,'\n',fp2,'\n',fp3,'\n',fp4)
+    fp.update_phase(thetas)
+    print(fp.phase)
