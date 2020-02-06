@@ -81,7 +81,8 @@ def transition_into_stomp(footsteps):
     bl_dist = Norm(footsteps['BL'])
     br_dist = Norm(footsteps['BR'])
     tof = np.max(np.array([fl_dist, fr_dist, bl_dist, br_dist]))/Vmax
-    new_footsteps = {'FL':np.array([0,0,0]), 'FR':np.array([0,0,0]), 'BR':np.array([0,0,0]), 'BL':np.array([0,0,0]), 'tof': tof}
+    # new_footsteps = {'FL':np.array([0,0,0]), 'FR':np.array([0,0,0]), 'BR':np.array([0,0,0]), 'BL':np.array([0,0,0]), 'tof': tof}#For now we are not using this
+    new_footsteps = {'FL':np.array([0,0,0]), 'FR':np.array([0,0,0]), 'BR':np.array([0,0,0]), 'BL':np.array([0,0,0])}
     return new_footsteps
 
 def transition_outof_stomp(command, stance  = {'FL':-1,'FR':1,'BR':-1,'BL':1}):
@@ -153,6 +154,60 @@ def calculate_footstep(command, footname, prev_footstep, stance):
     final_step = constrainEllipseWorkspace(final_step)
     return final_step
 
+class FootstepPlanner():
+    def __init__(self):
+        self.state = [np.array([0,0,0]), np.array([0,0,0])]
+        self.legs = ['FL', 'FR', 'BR', 'BL']
+        self.phase = {'FL':-1, 'FR':1, 'BR':-1, 'BL':1}
+        self.footpos = {'FL':np.array([0,0,0]), 'FR':np.array([0,0,0]), 'BR':np.array([0,0,0]), 'BL': np.array([0,0,0])}
+    
+    def plan(self,command):
+        if(self.COND_in_stomp()):
+            new_footstep = {}
+            for leg in self.legs:
+                new_footstep[leg] = calculate_footstep(command, leg, self.footpos[leg], self.phase[leg])
+        elif(self.COND_change_state(command)):
+            new_footstep = transition_into_stomp(self.footpos)
+        else:
+            new_footstep = {}
+            for leg in self.legs:
+                new_footstep[leg] = calculate_footstep(command, leg, self.footpos[leg], self.phase[leg])
+        #Currently open loop update, can change later
+        self.update_footpos(new_footstep)
+        self.update_phase()
+        self.update_state(command)
+        return new_footstep
+
+    def COND_in_stomp(self):
+        error = 0
+        for leg in self.legs:
+            error = error + Norm(self.footpos[leg]-np.array([0,0,0]))   
+        if(error < 0.01):
+            return True
+        else:
+            return False
+    
+    def COND_change_state(self, command):
+        error = 0 
+        error = error + Norm(command[0] - self.state[0])
+        error = error + Norm(command[1] - self.state[1])
+        if(error <= 0.01):
+            return False
+        else:
+            return True
+
+    def update_footpos(self, footstep):
+        self.footpos = footstep
+    
+    
+    def update_phase(self):
+        for leg in self.legs:
+            self.phase[leg] = self.phase[leg]*-1
+    
+    def update_state(self, state):
+        self.state = state
+    
+    
 def constrainEllipseWorkspace(pt):
     x,y,z = pt
     theta = np.arctan2(x,z)
@@ -208,7 +263,21 @@ if(__name__ == "__main__"):
     # print(constrainEllipseWorkspace([1.2,0,-1.85])*2)
     
     #TEST CALCULATE_FOOTSTEP
-    footstep = np.array([0.068,0,0])
-    stance = -1
-    command = [np.array([0.5,0,0]), np.array([0,0,0])]
-    print(calculate_footstep(command, 'BL',footstep, stance))
+    # footstep = np.array([0.068,0,0])
+    # stance = -1
+    # command = [np.array([0.5,0,0]), np.array([0,0,0])]
+    # print(calculate_footstep(command, 'BL',footstep, stance))
+
+    #TEST FOOTSTEP_PLANNER::IN STOMP
+    # fp = FootstepPlanner()
+    # print(fp.in_stomp())
+
+    #TEST FOOTSTEP_PLANNER::PLAN
+    command = [np.array([0,0,1]), np.array([0,0,0])]
+    fp = FootstepPlanner()
+    fp1 = fp.plan(command)
+    fp2 = fp.plan(command)
+    fp3 = fp.plan(command)
+    fp4 = fp.plan(command)
+    #I would prefer a simple way to animate this
+    print(fp1,'\n',fp2,'\n',fp3,'\n',fp4)
