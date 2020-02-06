@@ -13,9 +13,11 @@ bodyWidth = 0.24
 bodyLength = 0.37
 stepLengthx = 0.136
 stepLengthz = 0.017
-thetaMax = 0.0457*2 #Prolly
+omega_max = {'FL':np.array([ -0.07400999,  0.,         -0.01426234]),
+'FR':np.array([  0.07400999,  0.,         -0.01426234]),
+'BR':np.array([  0.07400999,  0.,          0.01426234]),
+'BL':np.array([ -0.07400999,  0.,          0.01426234])}
 
-#En
 tf = frames.TransformManager()
 t_FL = np.array([[1,0,0,bodyLength/2],[0,1,0,0],[0,0,-1,-bodyWidth/2],[0,0,0,1]])
 t_FR = np.array([[1,0,0,bodyLength/2],[0,1,0,0],[0,0, 1,bodyWidth/2],[0,0,0,1]])
@@ -26,6 +28,8 @@ tf.add_transform('FL', 'COM', t_FL)
 tf.add_transform('FR', 'COM', t_FR)
 tf.add_transform('BR', 'COM', t_BR)
 tf.add_transform('BL', 'COM', t_BL)
+
+
 #How do you handle switching of legs
 
 #UPDATE 5:12 FEB 5TH, IM REMOVING TIME OF FLIGHT CONTROL TO GET SOMETHING WORKING, WILL COME BACK TO IT LATER// DELETE THIS COMMENT WHEN YOU COME BACK TO IT
@@ -134,12 +138,20 @@ def calculate_step_length(footstep, velocity):
         /(stepLengthx*stepLengthz))/-((4*vx**2)/stepLengthx**2 + (4*vz**2)/stepLengthz**2)
     return t_1,t_2
 
-def calculate_step_length_ver2(command):
-    v = command[0]
-    omega = command[1]
-    norm = np.sqrt(v[0]**2 + v[2]**2 + omega[2]**2)
-    stepLengthxMax = 1
-    pass
+def calculate_footstep(command, footname, prev_footstep, stance):
+    """
+    Calculates footstep given a command for swing and stance leg given a command, footname,
+     prev_pos and stance or nor
+    """
+    vx,vy,vz = command[0]
+    omegax,omegay,omegaz = command[1]
+    vx = vx*stepLengthx
+    vz = vz*stepLengthz
+    omega = omega_max[footname]*omegay
+    final_step = frames.transform_vectors(tf.get_transform('COM', footname),np.array([vx,0,vz])+omega)
+    final_step = prev_footstep + stance*final_step
+    final_step = constrainEllipseWorkspace(final_step)
+    return final_step
 
 def constrainEllipseWorkspace(pt):
     x,y,z = pt
@@ -186,10 +198,17 @@ if(__name__ == "__main__"):
     # print(newft)
     
     #TEST CONSTRAIN ELLIPSE WORKSPACE
-    lies_on_ellipse = True
-    for i  in np.arange(1000):
-        x,y,z = constrainEllipseWorkspace(np.random.rand(3)*100)
-        if(abs((x/0.068)**2+(z/0.0085)**2 - 1) >= 0.001):
-            lies_on_ellipse = False
-    if(lies_on_ellipse):
-        print("pass test")
+    # lies_on_ellipse = True
+    # for i  in np.arange(10):
+    #     x,y,z = constrainEllipseWorkspace(np.random.rand(3)*100)
+    #     if(abs((x/0.068)**2+(z/0.0085)**2 - 1) >= 0.001):
+    #         lies_on_ellipse = False
+    # if(lies_on_ellipse):
+    #     print("pass test")
+    # print(constrainEllipseWorkspace([1.2,0,-1.85])*2)
+    
+    #TEST CALCULATE_FOOTSTEP
+    footstep = np.array([0.068,0,0])
+    stance = -1
+    command = [np.array([0.5,0,0]), np.array([0,0,0])]
+    print(calculate_footstep(command, 'BL',footstep, stance))
