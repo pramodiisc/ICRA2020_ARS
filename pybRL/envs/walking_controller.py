@@ -393,17 +393,25 @@ class WalkingController():
 
     
     def _update_leg_step_length(self, step_length, radius):
+        if(abs(radius) <= 0.12):
+            self.front_right.step_length = step_length
+            self.front_left.step_length = step_length 
+            self.back_right.step_length = step_length 
+            self.back_left.step_length = step_length 
+            return
         if(radius >= 0):
             self.front_right.step_length = step_length * (radius - self.body_width/2)/radius
             self.front_left.step_length = step_length * (radius + self.body_width/2)/radius
             self.back_right.step_length = step_length * (radius - self.body_width/2)/radius
             self.back_left.step_length = step_length * (radius + self.body_width/2)/radius
+            return
         if(radius < 0):
             newr = radius*-1
             self.front_left.step_length = step_length * (newr- self.body_width/2)/newr
             self.front_right.step_length = step_length * (newr + self.body_width/2)/newr
             self.back_left.step_length = step_length * (newr - self.body_width/2)/newr
             self.back_right.step_length = step_length *(newr + self.body_width/2)/newr
+            return 
 
     def drawBezier(self, points, weights, t):
         newpoints = np.zeros(points.shape)
