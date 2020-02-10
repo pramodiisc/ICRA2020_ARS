@@ -3,8 +3,6 @@ import numpy as np
 import sys, os
 sys.path.append(os.path.realpath('../..'))
 
-from cvxopt import matrix, solvers
-import cvxopt
 import time
 import pybRL.utils.frames as frames
 from pybRL.utils.frames import Norm, Cross, Normalize
@@ -38,7 +36,7 @@ def calc_footstep(footstep_name, prev_footstep, command):
     sl = calculate_step_length(prev_footstep, vf)
     # print(vf, sl)
     tof, sl = linear_program_ver1(vf, sl) 
-    print(prev_footstep+vf*tof)
+    # print(prev_footstep+vf*tof)
     pass
 def linear_program_ver1(vf, sl):
     """ The optimization problem was first tested in Mathematica in opt_test.nb, Then the
@@ -154,12 +152,14 @@ def calculate_footstep(command, footname, prev_footstep, stance):
     final_step = constrainEllipseWorkspace(final_step)
     return final_step
 
+y_offset = -0.243
 class FootstepPlanner():
     def __init__(self):
         self.state = [np.array([0,0,0]), np.array([0,0,0])]
         self.legs = ['FL', 'FR', 'BR', 'BL']
         self.phase = {'FL':-1, 'FR':1, 'BR':-1, 'BL':1}
-        self.footpos = {'FL':np.array([0,0,0]), 'FR':np.array([0,0,0]), 'BR':np.array([0,0,0]), 'BL': np.array([0,0,0])}
+        self.footpos = {'FL':np.array([0,y_offset,0]), 'FR':np.array([0,y_offset,0]),\
+             'BR':np.array([0,y_offset,0]), 'BL': np.array([0,y_offset,0])}
     
     def plan(self,command):
         if(self.COND_in_stomp()):
@@ -181,7 +181,7 @@ class FootstepPlanner():
     def COND_in_stomp(self):
         error = 0
         for leg in self.legs:
-            error = error + Norm(self.footpos[leg]-np.array([0,0,0]))   
+            error = error + Norm(self.footpos[leg]-np.array([0,y_offset,0]))   
         if(error < 0.01):
             return True
         else:
@@ -226,7 +226,7 @@ def constrainEllipseWorkspace(pt):
     if(abs(z)>abs(zmax)):
         z=zmax
 
-    vec = np.array([x,0,z])
+    vec = np.array([x,y_offset,z])
     return vec
 if(__name__ == "__main__"):
     #Testing ver1 code

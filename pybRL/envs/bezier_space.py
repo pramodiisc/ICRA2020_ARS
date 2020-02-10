@@ -127,15 +127,18 @@ ax = fig.gca(projection='3d')
 action =np.array([-0.5,1,1,1,1,1])
 weights = (action+1)/2 + 1e-3 # TO prevent 0 from occuring we add 1e-3
 points = np.array([[-0.068,-0.243,0],[-0.115,-0.243,0],[-0.065,-0.145,0],[0.065,-0.145,0],[0.115,-0.243,0],[0.068,-0.243,0]])
-step_length = 0.017
-points[0,0]= -step_length/2
-points[-1,0] = step_length/2
+points = [pt for pt in points]
+step_length = 0.068*2
+points[0][0]= -step_length/2
+points[-1][0] = step_length/2
 pt1 = points[0]
 pt2 = points[-1]
-pt3 = np.array([0,-0.243,-0.017/2])
-pt4 = np.array([0,-0.243,0.017/2])
+pt3 = np.array([0,-0.243,0])
+pt4 = np.array([0.068,-0.243,0])
+
 transf = frames.transform_matrix_from_line_segments(pt1, pt2, pt3, pt4)
 new_points = frames.transform_points(transf, points)
+new_points = [np.array([0.068,-0.243,0]), np.array([-0.068, -0.243, 0])]
 # weights = np.array([0.01,0.01,1,0,1,1])
 def drawBezier(points, weights, t):
     newpoints = np.zeros(points.shape)
@@ -167,34 +170,27 @@ def drawBezier(points, weights, t):
     if(t>1):
         return points[-1]+ (t-1)*(points[0] - points[-1])
 
-x= np.zeros(200)
-y =np.zeros(200)
-z =np.zeros(200)
+x= np.zeros(101)
+y =np.zeros(101)
+z =np.zeros(101)
 count = 0
 # print(drawBezier(points,weights,1.1))
-for t in np.arange(0,2, 0.01):
+for t in np.arange(0,1.01, 0.01):
     x[count], y[count],z[count] = drawBezier(np.array(points),weights, t)
     count = count+1
-# print(x)
 ax.plot(x,y,z,'b', label = 'original')
 
-x= np.zeros(200)
-y =np.zeros(200)
-z =np.zeros(200)
+x= np.zeros(101)
+y =np.zeros(101)
+z =np.zeros(101)
 count = 0
-# print(drawBezier(np.array(new_points),weights,1.1))
-print(points, new_points)
-for t in np.arange(0,2, 0.01):
+# print(drawBezier(points,weights,1.1))
+for t in np.arange(0,1.01, 0.01):
     x[count], y[count],z[count] = drawBezier(np.array(new_points),weights, t)
     count = count+1
-# print(x)
 ax.plot(x,y,z,'g', label = 'transformed')
 plt.legend()
 plt.show()
-
-def drawBezierBetweenFootsteps(footstep_initial, footstep_final):
-    
-    pass
 
 
 

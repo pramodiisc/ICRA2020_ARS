@@ -10,9 +10,6 @@
 import sys, os
 sys.path.append(os.path.realpath('../..'))
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 from dataclasses import dataclass
 from collections import namedtuple
 import os
@@ -20,7 +17,8 @@ import numpy as np
 from scipy.linalg import solve
 import matplotlib.pyplot as plt
 import pybRL.utils.frames as frames
-import pybrl.envs.bezier_space as bezier
+# import pybRL.envs.bezier_space as bezier
+import pybRL.envs.footstep_planner as fp
 PI = np.pi
 
 @dataclass
@@ -92,9 +90,6 @@ class WalkingController():
         self.body_width = 0.24
         self.body_length = 0.37
         self.gait = gait_type
-        self.set_b_value()
-        self.set_gamma_value()
-        self.set_leg_gamma()
         #Below: Bezier Pt Calculation
         self._pt0 = np.array([-0.1, -0.22])
         self._pt1 = np.array([-0.065, -0.15])
@@ -102,7 +97,17 @@ class WalkingController():
         self._pt3 = np.array([0.065, -0.15])
         #New calculation
         self._pts = np.array([[-0.068,-0.24],[-0.115,-0.24],[-0.065,-0.145],[0.065,-0.145],[0.115,-0.24],[0.068,-0.24]])
-    
+        self._pts_swing = [np.array([-0.068,-0.243,0]),
+        np.array([-0.115,-0.243,0]),
+        np.array([-0.065,-0.145,0]),
+        np.array([0.065,-0.145,0]),
+        np.array([0.115,-0.243,0]),
+        np.array([0.068,-0.243,0])]
+        self._pts_stance = [np.array([-0.068,-0.243,0]),
+        np.array([0.068,-0.243,0])]
+
+        #Create a footstep planner
+        self._planner = fp.FootstepPlanner()
     def transform_action_to_motor_joint_command_bezier(self, theta, action, radius):
         Legs = namedtuple('legs', 'front_right front_left back_right back_left')
         legs = Legs(front_right = self.front_right, front_left = self.front_left, back_right = self.back_right, back_left = self.back_left)
@@ -128,32 +133,79 @@ class WalkingController():
     def footstep_to_motor_joint_command_per_leg(self, leg_name, theta, prev_footstep, next_footstep, weights = np.array([1,1,1,1,1,1])):
         """ Generates x,y,z point for a leg given a footstep position, prev_footstep_position, tau and weights of the corresponding bezier curve"""
         norm = lambda vec: (vec[0]**2 + vec[1]**2 + vec[2]**2)**0.5
-        current_leg = self.legs[leg_name]
-        current_leg.step_length = norm(next_footstep - prev_footstep)
-        current_leg.pts = self._pts
-        tau = leg.theta/PI
-        current_leg.pts[0,0] = -current_leg.step_length/2
-        current_leg.pts[-1,0] = current_leg.step_length/2
-        trans = frames.transform_matrix_from_line_segments(current_leg.pts[0], current_leg.pts[-1], prev_footstep, next_footstep)
-        current_leg.pts = np.array(frames.transform_points(trans, current_leg.pts))
-        x,y,z = self.drawBezier(current_leg.pts, weights, tau)
-        current_leg.motor_knee, current_leg.motor_hip,current_leg.motor_abduction = self._inverse_3D(leg.x, leg.y, leg.z, self._leg)
-        current_leg.motor_hip = current_leg.motor_hip + self.MOTOROFFSETS[0]
-        current_leg.motor_knee = current_leg.motor_knee + self.MOTOROFFSETS[1]
-        return leg.motor_hip, leg.motor_knee, leg.motor_abduction  
+        step_length = norm(next_footstep - prev_footstep)
+        pts = self._pts_swing.copy()
+        if(theta >= PI):
+            pts = self._pts_stance.copy()
+            theta = theta - PI
+            weights = np.array([1,1])
+        # print(pts)
+        tau = theta/PI
+        pts[0][0] = -step_length/2
+        pts[-1][0] = step_length/2
+        trans = frames.transform_matrix_from_line_segments(pts[0], pts[-1], prev_footstep, next_footstep)
+        # print(trans, pts)
+        pts = np.array(frames.transform_points(trans, pts))
+        x,y,z = self.drawBezier(pts, weights, tau)
+        # print(x,y,z,pts)
+        motor_knee, motor_hip,motor_abduction = self._inverse_3D(x, y, z, self._leg)
+        motor_hip = motor_hip + self.MOTOROFFSETS[0]
+        motor_knee = motor_knee + self.MOTOROFFSETS[1]
+        return motor_hip, motor_knee, motor_abduction  
 
-    def transform_footsteps_to_motor_joint_commands(self, footsteps_prev, footsteps, theta, weights):
+    def transform_footsteps_to_motor_joint_commands(self, theta, footsteps_prev, footsteps, action):
         """
         footsteps: this is a dictionary [name: np.array([x,y,z])] 
         """
-        legs = ['fl','fr','bl','br']
+        legs = ['FL','FR','BL','BR']
         leg_abduction_angles = []
         leg_motor_angles = []
+        weights = (np.array(action)+1)/2
+        leg_theta = self.update_leg_theta(theta, {'FL': 0, 'FR':PI, 'BL':PI, 'BR':0})
         for leg in legs:
-            hip, knee, abd = self.footstep_to_motor_joint_command_per_leg(leg, theta, footsteps_prev[leg], footsteps[leg], weights)
+            hip, knee, abd = self.footstep_to_motor_joint_command_per_leg(leg, leg_theta[leg], footsteps_prev[leg], footsteps[leg], weights)
             leg_abduction_angles.append(abd)
-            leg_motor_angles.append(hip, knee)
+            leg_motor_angles.append(hip)
+            leg_motor_angles.append(knee)
         return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8)
+    
+    def transform_action_to_motor_joint_command_footstep(self, theta, action, command):
+        """
+        Uses the footstep planner to transform action to motor joint commands,
+        tau lies between 0 and 2, theta lies between 0 to 2*pi
+        """
+        #Right now only applicable for trotting
+        leg_theta = self.update_leg_theta(theta, {'FL': 0, 'FR':PI, 'BL':PI, 'BR':0})
+        if(abs(theta - 0)<= 0.0028 or abs(theta - PI)<= 0.0028):
+            self._planner.update_phase(leg_theta)
+            self.prev_footstep = self._planner.footpos
+            self.new_footstep = self._planner.plan(command)
+        leg_abduction_angles,leg_motor_angles, _,_ = self.transform_footsteps_to_motor_joint_commands(theta, self.prev_footstep,self.new_footstep, action)
+        return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8)
+    
+    def update_leg_theta(self,theta, phase = None):
+        """ Depending on the gait, the theta for every leg is calculated"""
+        def constrain_theta(theta):
+            theta = np.fmod(theta, 2*PI)
+            if(theta < 0):
+                theta = theta + 2*PI
+            return theta
+        if(phase is None):
+            self.front_right.theta = constrain_theta(theta+self._phase.front_right)
+            self.front_left.theta = constrain_theta(theta+self._phase.front_left)
+            self.back_right.theta = constrain_theta(theta+self._phase.back_right)
+            self.back_left.theta = constrain_theta(theta+self._phase.back_left)
+        else:
+            new_theta = {}
+            try:
+                new_theta['FL'] = constrain_theta(theta+phase['FL'])
+            except:
+                print(new_theta, theta, phase)
+                exit()
+            new_theta['FR'] = constrain_theta(theta+phase['FR'])
+            new_theta['BR'] = constrain_theta(theta+phase['BR'])
+            new_theta['BL'] = constrain_theta(theta+phase['BL'])
+            return new_theta
 
 
     def run_traj2d(self, theta, fl_rfunc, fr_rfunc, bl_rfunc, br_rfunc):
@@ -275,16 +327,18 @@ class WalkingController():
         def drawCurve(points, weights, t):
             # print("ent1")
             if(points.shape[0]==1):
-                return [points[0,0]/weights[0], points[0,1]/weights[0]]
+                return [points[0,0]/weights[0], points[0,1]/weights[0], points[0,2]/weights[0]]
             else:
                 newpoints=np.zeros([points.shape[0]-1, points.shape[1]])
                 newweights=np.zeros(weights.size)
                 for i in np.arange(newpoints.shape[0]):
                     x = (1-t) * points[i,0] + t * points[i+1,0]
                     y = (1-t) * points[i,1] + t * points[i+1,1]
+                    z = (1-t) * points[i,2] + t * points[i+1,2]
                     w = (1-t) * weights[i] + t*weights[i+1]
                     newpoints[i,0] = x
                     newpoints[i,1] = y
+                    newpoints[i,2] = z
                     newweights[i] = w
                 #   print(newpoints, newweights)
                 # print("end")
@@ -296,7 +350,7 @@ class WalkingController():
         if(t<=1):
             return drawCurve(newpoints, weights, t)
         if(t>1):
-            return [points[-1,0]+ (t-1)*(points[0,0] - points[-1,0]), -0.243]
+            return points[-1]+ (t-1)*(points[0] - points[-1])
 
 def constrain_abduction(angle):
     if(angle < 0):
@@ -308,39 +362,46 @@ def constrain_abduction(angle):
 if(__name__ == "__main__"):
     # action = np.array([ 0.24504616, -0.11582746,  0.71558934, -0.46091432, -0.36284493,  0.00495828, -0.06466855, -0.45247894,  0.72117291, -0.11068088])
 
-    walkcon = WalkingController(phase=[PI,0,0,PI])
-    x= 0.4
-    y = -0.195
-    z = -0
-    print(walkcon._inverse_3D(x,y,z, walkcon._leg))
-    print(walkcon._inverse_stoch2(x,y,walkcon._leg))
+    # walkcon = WalkingController(phase=[PI,0,0,PI])
+    # x= 0.4
+    # y = -0.195
+    # z = -0
+    # print(walkcon._inverse_3D(x,y,z, walkcon._leg))
+    # print(walkcon._inverse_stoch2(x,y,walkcon._leg))
 
-    #----------TESTING WALKING CONTROLLER BEZIER TRAJECTORY ------------------------------#
-    thetas = np.arange(0, 2*PI, 0.01)
-    action = [0.5,0.5,0,1,1,0,0.3]
-    x = np.zeros(thetas.size)
-    y = np.zeros(thetas.size)
-    count = 0
-    for theta in thetas:
-        walkcon.transform_action_to_motor_joint_command_bezier(theta,action)
-        count = count + 1
+    # #----------TESTING WALKING CONTROLLER BEZIER TRAJECTORY ------------------------------#
+    # thetas = np.arange(0, 2*PI, 0.01)
+    # action = [0.5,0.5,0,1,1,0,0.3]
+    # x = np.zeros(thetas.size)
+    # y = np.zeros(thetas.size)
+    # count = 0
+    # for theta in thetas:
+    #     walkcon.transform_action_to_motor_joint_command_bezier(theta,action)
+    #     count = count + 1
     # plt.figure(1)
     # plt.plot(x,y,label="trajectory")
     # plt.show()
     #--------------------------------------------------------------------------------------
 
-#     theta = 0
-#     action = np.zeros(10)
-#     action = (np.array([0.02505827, 0.02429368, 0.02302543, 0.02367982, 0.02349182, 0.02434083,
-#  0.02467802, 0.02330308, 0.02460212, 0.02392253]) - np.ones(10)*0.024 ) * 1/0.024
+    #     theta = 0
+    #     action = np.zeros(10)
+    #     action = (np.array([0.02505827, 0.02429368, 0.02302543, 0.02367982, 0.02349182, 0.02434083,
+    #  0.02467802, 0.02330308, 0.02460212, 0.02392253]) - np.ones(10)*0.024 ) * 1/0.024
 
-#     x1 = []
-#     y1 = []     while(theta < 2*PI):
-#     _ , leg_motor_angles, _, _, data = walkcon.transform_action_to_motor_joint_command3(theta, action)
-#     x1.append(data[0])
-#     y1.append(data[1])
-#     theta = theta + 2*PI/100
+    #     x1 = []
+    #     y1 = []     while(theta < 2*PI):
+    #     _ , leg_motor_angles, _, _, data = walkcon.transform_action_to_motor_joint_command3(theta, action)
+    #     x1.append(data[0])
+    #     y1.append(data[1])
+    #     theta = theta + 2*PI/100
 
-#     plt.figure()
-#     plt.plot(x1, y1)
-#     plt.show()
+    #     plt.figure()
+    #     plt.plot(x1, y1)
+    #     plt.show()
+
+    #TEST UPDATE_LEG_THETA
+    theta = PI+0.1
+    phase = {'FL':0, 'FR':PI, 'BR':0, 'BL':PI}
+    walkcon = WalkingController()
+    new_theta = walkcon.update_leg_theta(theta, phase)
+    print(new_theta)
