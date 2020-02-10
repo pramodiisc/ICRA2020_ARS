@@ -184,7 +184,23 @@ def transform_points(transf_matrix, points):
         temp_pts = np.array([points[0],points[1],points[2],1])
         newpts=(transf_matrix@temp_pts)[:3]
     return newpts
-
+def transform_vectors(transf_matrix, vectors):
+    """
+    Transforms a vector by the given transformation matrix (No translation only rotation since vectors have 
+    no position)
+    Inputs:
+    transf_matrix: numpy (4*4) array
+    vectors: list of numpy (1*3) arrays
+    Returns:
+    transformed_vectors: list of numpy (1*3) arrays
+    """
+    if(type(vectors)==list):
+        newvecs = []
+        for vec in vectors:
+            newvecs.append(transf_matrix[:3,:3]@vec)
+    else:
+        newvecs = transf_matrix[:3,:3]@vectors
+    return newvecs
 def transform_matrix_from_line_segments(ls11,ls12,LS11,LS12):
     """ Returns a 4*4 transformation matrix (numpy array) that when multiplied with line segments in the 
     initial frame, leads to line segments in the target frame as given.
@@ -205,6 +221,10 @@ def transform_matrix_from_line_segments(ls11,ls12,LS11,LS12):
     scale_matrix = np.eye(4)*norm(vec2)/norm(vec1)            
     scale_matrix[3,3] = 1
     trans_to_point = translateEuler(LS11)
+    print(trans_to_point)
+    print(rot_matrix)
+    print(trans_to_origin)
+    
     return trans_to_point@scale_matrix@rot_matrix@trans_to_origin
 
 def Cross(v1, v2):
@@ -223,28 +243,37 @@ if(__name__ == "__main__"):
     # LS12 = np.array([0,0,0])
     # tf = TransformManager()
     # # print(tf.transform_matrix_from_line_segments(ls11, ls12, LS11, LS12)@np.array([1,0,0,1]))
-    # norm = lambda vec: (vec[0]**2 + vec[1]**2 + vec[2]**2)**0.5
+    norm = lambda vec: (vec[0]**2 + vec[1]**2 + vec[2]**2)**0.5
 
-    # isCorrect = True
-    # for i in np.arange(10000):
-    #     p1 = np.random.randn(3)
-    #     p2 = np.random.randn(3)
-    #     p3 = np.random.randn(3)
-    #     p4 = np.random.randn(3)
-    #     # p4 = p3 + (norm(p2 - p1)/norm(p4-p3))*(p4-p3)
-    #     mat = tf.transform_matrix_from_line_segments(p1, p2, p3, p4)
-    #     _p1 = np.array([p1[0], p1[1], p1[2], 1])
-    #     _p2 = np.array([p2[0], p2[1], p2[2], 1])
-    #     _p3 = np.array([p3[0], p3[1], p3[2], 1])
-    #     _p4 = np.array([p4[0], p4[1], p4[2], 1])
-    #     v1 = mat@_p1 - _p3
-    #     v2 = mat@_p2 - _p4
-    #     if(norm(v1)+norm(v2) >= 0.001):
-    #         print(v1)
-    #         isCorrect = False
+    isCorrect = True
+    for i in np.arange(10000):
+        p1 = np.random.randn(3)
+        p2 = np.random.randn(3)
+        p3 = np.random.randn(3)
+        p4 = np.random.randn(3)
+        # p4 = p3 + (norm(p2 - p1)/norm(p4-p3))*(p4-p3)
+        mat = transform_matrix_from_line_segments(p1, p2, p3, p4)
+        _p1 = np.array([p1[0], p1[1], p1[2], 1])
+        _p2 = np.array([p2[0], p2[1], p2[2], 1])
+        _p3 = np.array([p3[0], p3[1], p3[2], 1])
+        _p4 = np.array([p4[0], p4[1], p4[2], 1])
+        v1 = mat@_p1 - _p3
+        v2 = mat@_p2 - _p4
+        if(norm(v1)+norm(v2) >= 0.001):
+            print(v1)
+            isCorrect = False
 
-    # if(isCorrect):
-    #     print("passed rot+ trans test")
+    if(isCorrect):
+        print("passed rot+ trans test")
+    
+    p1 = np.array([-0.068,-0.243,0])
+    p2 = np.array([0.068,-0.243,0])
+    
+    p3 = np.array([0.068,-0.243,0])
+    p4 = np.array([-0.068,-0.243,0])
+    mat = transform_matrix_from_line_segments(p1, p2, p3, p4)
+    print( transform_points(mat, [p1,p2]))
+
     # isCorrect = True
     # for i in np.arange(100000):
     #     v1 = np.random.randn(3)
@@ -262,4 +291,17 @@ if(__name__ == "__main__"):
     # tf = TransformManager()
     # new_pts = transform_points(tf.translateEuler(np.array([1,1,1])), pts)
     # print(new_pts)
-    print(Norm(np.array([1,1,1])))
+    # print(Norm(np.array([1,1,1])))
+
+    #TEST Transform vectors
+    # tfm = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,1],[0,0,0,1]])
+    # vec = [np.array([1,1,1]),np.array([1,1,0])]
+    # vec= np.array([1,2,1])
+    # print(transform_vectors(tfm, vec))
+
+    #TEST Transform Matrix From Line Segments
+    # p1 = np.random.randn(3)
+    # p2 = np.random.randn(3)
+    # p3 = np.random.randn(3)
+    # p4 = np.random.randn(3)
+    # mat = tf.transform_matrix_from_line_segments(p1, p2, p3, p4)
