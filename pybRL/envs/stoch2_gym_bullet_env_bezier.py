@@ -39,7 +39,7 @@ class Stoch2Env(gym.Env):
 				 stairs = True):
 
 		self._is_stairs = stairs
-
+		self.scale = 0
 		self._is_render = render
 		self._on_rack = on_rack
 		if self._is_render:
@@ -71,7 +71,7 @@ class Stoch2Env(gym.Env):
 
 		self._xpos_previous = 0.0
 		self._walkcon = walking_controller.WalkingController(gait_type=gait,
-															 phase=phase)
+															 phase=phase, scale = self.scale)
 
 		self._cam_dist = 1.0
 		self._cam_yaw = 0.0
@@ -83,7 +83,7 @@ class Stoch2Env(gym.Env):
 		self.linearV = 0
 		self.angV = 0
 
-		self.radius = 0.5
+		self.radius = 100
 		## Gym env related mandatory variables
 		observation_high = np.array([10.0] * self._obs_dim)
 		observation_low = -observation_high
@@ -133,9 +133,9 @@ class Stoch2Env(gym.Env):
 
 		self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
 		self.SetFootFriction(0.6)
-		self.linearV = 1
-		self.angV = 0.000
-		self.radius = 0.1
+		# self.linearV = 1
+		# self.angV = 0.000
+		# self.radius = 0.1
 
 
 
@@ -149,9 +149,9 @@ class Stoch2Env(gym.Env):
 		self.ResetPoseForAbd
 		self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
 		self._n_steps = 0
-		self.linearV = 0.30
-		self.angV = 0.6
-		self.radius = 0.1
+		# self.linearV = 0.30
+		# self.angV = 0.6
+		# self.radius = 0.1
 
 		return self.GetObservationReset()
 
@@ -272,7 +272,7 @@ class Stoch2Env(gym.Env):
 
 		current_v =  round(self.avg_vel_per_step,2)                   #self.GetAvgCurrentVelocity()
 		current_w = self.avg_omega_per_step
-		print("Ang_Velocity {}".format(current_w))
+		# print("Ang_Velocity {}".format(current_w))
 		# v  = self.GetBaseLinearVelocity()
 		# print(math.sqrt(v[0]**2 + v[1]**2))
 		
@@ -281,7 +281,7 @@ class Stoch2Env(gym.Env):
 		desired_r = round(self.radius,2)
 
 		#print("current_avg_v is {} and desired_v is {}".format(current_v, desired_v))
-		print("current_radius is {} and desired_radius is {}".format(current_r,desired_r))
+		# print("current_radius is {} and desired_radius is {}".format(current_r,desired_r))
 
 		done, penalty = self._termination(pos, ori)
 		velocity_reward = np.exp(-40*((current_v - desired_v)**2))
@@ -568,9 +568,14 @@ class Stoch2Env(gym.Env):
 				applied_motor_torque = self._apply_pd_control(m_angle_cmd_ext, m_vel_cmd_ext)
 				self._pybullet_client.stepSimulation()
 		pass
-
-	def do_trajectory(self, ):
+	def update_radius(self, rad):
+		self.radius = rad
+	def update_scale(self, scale):
+		self._walkcon.scale = scale
+	def do_trajectory(self ):
 		pass
+
+
 if(__name__ == "__main__"):
 	
 	env = Stoch2Env(render=True, stairs = False,on_rack=False, gait = 'trot')

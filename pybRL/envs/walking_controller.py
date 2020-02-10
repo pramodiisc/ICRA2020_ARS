@@ -71,6 +71,7 @@ class WalkingController():
                  gait_type='trot',
                  leg = [0.12,0.15015,0.04,0.15501,0.11187,0.04,0.2532,2.803],
                  phase = [0,0,0,0],
+                 scale = 1.0
                  ):     
         ## These are empirical parameters configured to get the right controller, these were obtained from previous training iterations  
         self._phase = robot_data(front_right = phase[0], front_left = phase[1], back_right = phase[2], back_left = phase[3])
@@ -98,6 +99,7 @@ class WalkingController():
         #New calculation
         self._pts = np.array([[-0.068,-0.24],[-0.115,-0.24],[-0.065,-0.145],[0.065,-0.145],[0.115,-0.24],[0.068,-0.24]])
         # self.new_pts = np.array([[-0.058,-0.24],[-0.105,-0.24],[-0.055,-0.145],[0.075,-0.145],[0.125,-0.24],[0.078,-0.24]])
+        self.scale = scale
     def set_b_value(self):
         if(self.gait == "trot" or self.gait == "bound" or self.gait == "walk"):
             self.front_left.b = 1
@@ -227,6 +229,8 @@ class WalkingController():
             new_pts[-1,0] = leg.step_length/2 
             x,y = self.drawBezier(new_pts, weights, tau)
             leg.x, leg.y, leg.z = np.array([[np.cos(leg.phi),0,np.sin(leg.phi)],[0,1,0],[-np.sin(leg.phi),0, np.cos(leg.phi)]])@np.array([x,y,0])
+            leg.x = leg.x * self.scale
+            leg.z = leg.z * self.scale
             leg.motor_knee, leg.motor_hip,leg.motor_abduction = self._inverse_3D(leg.x, leg.y, leg.z, self._leg)
             leg.motor_hip = leg.motor_hip + self.MOTOROFFSETS[0]
             leg.motor_knee = leg.motor_knee + self.MOTOROFFSETS[1]
