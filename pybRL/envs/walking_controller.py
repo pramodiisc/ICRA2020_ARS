@@ -396,6 +396,11 @@ class WalkingController():
             self.front_right.phi = -np.arctan2(self.body_length/2, radius - self.body_width/2)
             self.back_left.phi = -np.arctan2(self.body_length/2, radius + self.body_width/2)
             self.back_right.phi =  np.arctan2(self.body_length/2, radius - self.body_width/2)
+            print(self.front_right.phi)
+            print(self.front_left.phi)
+            print(self.back_right.phi)
+            print(self.back_left.phi)
+
         if(radius<0):
             newr = -1*radius
             self.front_right.phi =  np.arctan2(self.body_length/2, newr + self.body_width/2)
@@ -416,6 +421,11 @@ class WalkingController():
             self.front_left.step_length = step_length * (radius + self.body_width/2)/radius
             self.back_right.step_length = step_length * (radius - self.body_width/2)/radius
             self.back_left.step_length = step_length * (radius + self.body_width/2)/radius
+            print(self.front_right.step_length)
+            print(self.front_left.step_length)
+            print(self.back_right.step_length)
+            print(self.back_left.step_length)
+
             return
         if(radius < 0):
             newr = radius*-1
@@ -473,21 +483,24 @@ if(__name__ == "__main__"):
     # action = np.array([ 0.24504616, -0.11582746,  0.71558934, -0.46091432, -0.36284493,  0.00495828, -0.06466855, -0.45247894,  0.72117291, -0.11068088])
 
     walkcon = WalkingController(phase=[PI,0,0,PI])
-    x= 0.4
-    y = -0.195
-    z = -0
-    print(walkcon._inverse_3D(x,y,z, walkcon._leg))
-    print(walkcon._inverse_stoch2(x,y,walkcon._leg))
+    # x= 0.4
+    # y = -0.195
+    # z = -0
+    # print(walkcon._inverse_3D(x,y,z, walkcon._leg))
+    # print(walkcon._inverse_stoch2(x,y,walkcon._leg))
+    walkcon._update_leg_step_length(0.068*2, 0.4)
+    walkcon._update_leg_phi( 0.4)
+
 
     #----------TESTING WALKING CONTROLLER BEZIER TRAJECTORY ------------------------------#
-    thetas = np.arange(0, 2*PI, 0.01)
-    action = [0.5,0.5,0,1,1,0,0.3]
-    x = np.zeros(thetas.size)
-    y = np.zeros(thetas.size)
-    count = 0
-    for theta in thetas:
-        walkcon.transform_action_to_motor_joint_command_bezier(theta,action)
-        count = count + 1
+    # thetas = np.arange(0, 2*PI, 0.01)
+    # action = [0.5,0.5,0,1,1,0,0.3]
+    # x = np.zeros(thetas.size)
+    # y = np.zeros(thetas.size)
+    # count = 0
+    # for theta in thetas:
+    #     walkcon.transform_action_to_motor_joint_command_bezier(theta,action)
+    #     count = count + 1
     # plt.figure(1)
     # plt.plot(x,y,label="trajectory")
     # plt.show()

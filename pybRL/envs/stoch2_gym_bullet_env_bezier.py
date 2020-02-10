@@ -302,7 +302,8 @@ class Stoch2Env(gym.Env):
 	def GetObservation(self):
 
 		motor_angles = self.GetMotorAngles()
-		obs = np.concatenate((motor_angles,[self.linearV],[self.angV])).ravel()
+		obs = np.array(motor_angles)
+		# obs = np.concatenate((motor_angles,[self.linearV],[self.angV])).ravel()
 		return obs
 
 
@@ -588,12 +589,16 @@ def quaternionToEuler(q):
 
 if(__name__ == "__main__"):
 	
-	env = Stoch2Env(render=True, stairs = False,on_rack=False, gait = 'trot')
-	action = [-0.5,1,1,1,1,-0.5,0.6]
-	env.radius = 0.0
+	env = Stoch2Env(render=False, stairs = False,on_rack=False, gait = 'trot')
+	action = [-0.5,1,1,1,1,-0.5]
+	env.radius = 0.4
 	env._walkcon.scale = 1.0
-	for i in range(200):
-		env.step(action)
-		env.update_comy()
+	states = []
+	for i in np.arange(50):
+		cstate, _, _, _ = env.step(action)
+		states.append(cstate)
+		print("done: ",i)
+		# env.update_comy()
 		# print(ori)
-
+	state = np.array(states)
+	np.save("states.npy", state)
