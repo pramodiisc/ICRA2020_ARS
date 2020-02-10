@@ -182,8 +182,9 @@ class Stoch2Env(gym.Env):
 		counter = 0
 		sum_V = 0
 		sum_W = 0
+		command= [np.array([1,0,0]), np.array([0,1,0])]
 		while(np.abs(omega*self.dt*counter) <= np.pi * self._update_action_every):
-			abd_m_angle_cmd, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.transform_action_to_motor_joint_command_bezier(self._theta,action, self.radius)
+			abd_m_angle_cmd, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.transform_action_to_motor_joint_command_footstep(self._theta,action,command)
 			self._theta = constrain_theta(omega * self.dt + self._theta)
 			# print(self._theta/PI)
 			qpos_act = np.array(self.GetMotorAngles())
@@ -206,9 +207,42 @@ class Stoch2Env(gym.Env):
 
 		self.avg_vel_per_step = sum_V/counter
 		self.avg_omega_per_step = sum_W/counter
-
+		self.hack_smoothen_theta()
 		self._n_steps += 1
 		return energy_spent_per_step, cost_reference, angle_data
+
+	def test_leg(self,prev_footstep,footstep,callback=None):
+		omega = 2 * np.pi * self._frequency #Maybe remove later
+		counter = 0
+		print(self._theta)
+		while(np.abs(omega*self.dt*counter) <= np.pi * self._update_action_every):
+			hip, knee, abduction= self._walkcon.footstep_to_motor_joint_command_per_leg('FL', self._theta,prev_footstep,footstep)
+			self._theta = constrain_theta(omega * self.dt + self._theta)
+			# print(self._theta/PI)
+			m_angle_cmd_ext = np.array([hip, knee, 0,0,0,0,0,0,abduction,0,0,0])
+			m_vel_cmd_ext = np.zeros(12)
+			counter = counter+1
+			for _ in range(self._frame_skip):
+				applied_motor_torque = self._apply_pd_control(m_angle_cmd_ext, m_vel_cmd_ext)
+				self._pybullet_client.stepSimulation()
+		self.hack_smoothen_theta()
+		return None
+	
+	def test_legs(self,prev_footstep,footstep,action,callback=None):
+		omega = 2 * np.pi * self._frequency * self.frequency_weight #Maybe remove later
+		counter = 0
+		while(np.abs(omega*self.dt*counter) <= np.pi * self._update_action_every):
+			abd_m_angle_cmd, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd = self._walkcon.transform_footsteps_to_motor_joint_commands( self._theta,prev_footstep,footstep, action)
+			self._theta = constrain_theta(omega * self.dt + self._theta)
+			# print(self._theta/PI)
+			m_angle_cmd_ext = np.array(leg_m_angle_cmd + abd_m_angle_cmd)
+			m_vel_cmd_ext = np.zeros(12)
+			counter = counter+1
+			for _ in range(self._frame_skip):
+				applied_motor_torque = self._apply_pd_control(m_angle_cmd_ext, m_vel_cmd_ext)
+				self._pybullet_client.stepSimulation()
+		self.hack_smoothen_theta()
+		return None
 
 	def render(self, mode="rgb_array", close=False):
 		if mode != "rgb_array":
@@ -571,10 +605,51 @@ class Stoch2Env(gym.Env):
 
 	def do_trajectory(self, ):
 		pass
+	
+	def hack_smoothen_theta(self):
+		if(abs(self._theta - np.pi*2)<= 0.01):
+			self._theta = 0
+		if(abs(self._theta - 0)<= 0.01):
+			self._theta = 0
+		if(abs(self._theta - np.pi)<= 0.01):
+			self._theta = np.pi
+
 if(__name__ == "__main__"):
 	
 	env = Stoch2Env(render=True, stairs = False,on_rack=False, gait = 'trot')
-	action = [-0.5,1,1,1,1,-0.5,0.6]
+	# action = [-0.5,1,1,1,1,-0.5,0.6]
+
+	#TEST LEG
+	# action = [1,1,1,1,1,1]
+	# footstep = np.array([0.0,-0.243,0])
+	# next_footstep = np.array([0.068, -0.243, 0])
+	# env.test_leg(footstep, next_footstep)
+	# for i in np.arange(100):
+	# 	footstep = np.array([0.068,-0.243,0])
+	# 	next_footstep = np.array([-0.068, -0.243, 0])
+	# 	env.test_leg(footstep, next_footstep)
+	# 	next_footstep = np.array([0.068,-0.243,0])
+	# 	footstep = np.array([-0.068, -0.243, 0])
+	# 	env.test_leg(footstep, next_footstep)
+
+
+	#TEST LEGS
+	# footsteps_prev = {'FL':np.array([0.0,-0.243,0]) , 'FR':np.array([0.0,-0.243,0]) , 'BR':np.array([0.0,-0.243,0]) , 'BL':np.array([0.0,-0.243,0])}
+	# footsteps_next = {'FL':np.array([0.068,-0.243,0]) , 'FR':np.array([-0.068,-0.243,0]) , 'BR':np.array([0.068,-0.243,0]) , 'BL':np.array([-0.068,-0.243,0])}
+	# action = np.array([1,1,1,1,1,1])
+	# env.test_legs(footsteps_prev, footsteps_next,action)
+	# for i in np.arange(100):
+	# 	action = np.array([1,1,1,1,1,1])
+	# 	footsteps_prev = {'FL':np.array([0.068,-0.243,0]) , 'FR':np.array([-0.068,-0.243,0]) , 'BR':np.array([0.068,-0.243,0]) , 'BL':np.array([-0.068,-0.243,0])}
+	# 	footsteps_next = {'FL':np.array([-0.068,-0.243,0]) , 'FR':np.array([0.068,-0.243,0]) , 'BR':np.array([-0.068,-0.243,0]) , 'BL':np.array([0.068,-0.243,0])}
+	# 	env.test_legs(footsteps_prev, footsteps_next,action)
+	# 	footsteps_prev = {'FL':np.array([-0.068,-0.243,0]) , 'FR':np.array([0.068,-0.243,0]) , 'BR':np.array([-0.068,-0.243,0]) , 'BL':np.array([0.068,-0.243,0])}
+	# 	footsteps_next = {'FL':np.array([0.068,-0.243,0]) , 'FR':np.array([-0.068,-0.243,0]) , 'BR':np.array([0.068,-0.243,0]) , 'BL':np.array([-0.068,-0.243,0])}
+	# 	env.test_legs(footsteps_prev, footsteps_next,action)
+	
+	#TEST COMMAND
+	action = np.array([1,1,1,1,1,1])
 	for i in range(200):
 		env.step(action)
+
 
