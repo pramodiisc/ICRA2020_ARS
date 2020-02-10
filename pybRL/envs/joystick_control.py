@@ -59,6 +59,11 @@ def parse_radius(rad):
         radius = 0.1*np.sign(rad)
     return radius
 
+def quaternionToEuler(q):
+    siny_cosp = 2 * (q[3]* q[2] + q[0] * q[1])
+    cosy_cosp = 1 - 2 * (q[1] * q[1] + q[2] * q[2])
+    yaw = np.arctan2(siny_cosp, cosy_cosp)
+    return yaw
 def parse_scale(scl):
     scale = 0.2*scl
     return scale
@@ -74,7 +79,8 @@ def handle_env():
         env.update_radius(radius)
         env.update_scale(scale)
         pos, ori = env.GetBasePosAndOrientation()
-        print(ori)
+        eul = quaternionToEuler(ori)
+        print(eul)
         env.step(action)
 if(__name__ == "__main__"):
     inp = InputManager()

@@ -580,6 +580,10 @@ if(__name__ == "__main__"):
 	
 	env = Stoch2Env(render=True, stairs = False,on_rack=False, gait = 'trot')
 	action = [-0.5,1,1,1,1,-0.5,0.6]
+	env.radius = 0.3
+	env._walkcon.scale = 1.0
 	for i in range(200):
 		env.step(action)
+		pos, ori = env.GetBasePosAndOrientation()
+		print(ori)
 
