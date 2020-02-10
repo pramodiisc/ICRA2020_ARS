@@ -83,7 +83,7 @@ class Stoch2Env(gym.Env):
 		self.linearV = 0
 		self.angV = 0
 
-		self.radius = 100
+		self.radius = 0.5
 		## Gym env related mandatory variables
 		observation_high = np.array([10.0] * self._obs_dim)
 		observation_low = -observation_high
@@ -134,8 +134,8 @@ class Stoch2Env(gym.Env):
 		self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
 		self.SetFootFriction(0.6)
 		self.linearV = 1
-		self.angV = 0.001
-		self.radius = self.linearV/self.angV
+		self.angV = 0.000
+		self.radius = 0.1
 
 
 
@@ -151,7 +151,7 @@ class Stoch2Env(gym.Env):
 		self._n_steps = 0
 		self.linearV = 0.30
 		self.angV = 0.6
-		self.radius = self.linearV/self.angV
+		self.radius = 0.1
 
 		return self.GetObservationReset()
 

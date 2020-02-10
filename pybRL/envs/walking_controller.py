@@ -97,7 +97,7 @@ class WalkingController():
         self._pt3 = np.array([0.065, -0.15])
         #New calculation
         self._pts = np.array([[-0.068,-0.24],[-0.115,-0.24],[-0.065,-0.145],[0.065,-0.145],[0.115,-0.24],[0.068,-0.24]])
-    
+        # self.new_pts = np.array([[-0.058,-0.24],[-0.105,-0.24],[-0.055,-0.145],[0.075,-0.145],[0.125,-0.24],[0.078,-0.24]])
     def set_b_value(self):
         if(self.gait == "trot" or self.gait == "bound" or self.gait == "walk"):
             self.front_left.b = 1
@@ -108,7 +108,7 @@ class WalkingController():
             self.front_left.b = 1
             self.front_right.b = -1
             self.back_left.b = 1
-            self.back_right.b = -1
+            self.back_right.b = -a
         elif(self.gait == "sidestep_right"):
             self.front_left.b = -1
             self.front_right.b = 1
@@ -222,7 +222,10 @@ class WalkingController():
             tau = leg.theta/PI
             weights = (np.array(action)+1)/2
             weights = weights[:-1]
-            x,y = self.drawBezier(self._pts, weights, tau)
+            new_pts = self._pts.copy()
+            new_pts[0,0] = -leg.step_length/2 
+            new_pts[-1,0] = leg.step_length/2 
+            x,y = self.drawBezier(new_pts, weights, tau)
             leg.x, leg.y, leg.z = np.array([[np.cos(leg.phi),0,np.sin(leg.phi)],[0,1,0],[-np.sin(leg.phi),0, np.cos(leg.phi)]])@np.array([x,y,0])
             leg.motor_knee, leg.motor_hip,leg.motor_abduction = self._inverse_3D(leg.x, leg.y, leg.z, self._leg)
             leg.motor_hip = leg.motor_hip + self.MOTOROFFSETS[0]
@@ -378,11 +381,11 @@ class WalkingController():
             self.back_left.phi = -np.arctan2(self.body_length/2, radius + self.body_width/2)
             self.back_right.phi =  np.arctan2(self.body_length/2, radius - self.body_width/2)
         if(radius<0):
-            radius = -1*radius
-            self.front_right.phi =  np.arctan2(self.body_length/2, radius + self.body_width/2)
-            self.front_left.phi = -np.arctan2(self.body_length/2, radius - self.body_width/2)
-            self.back_right.phi = -np.arctan2(self.body_length/2, radius + self.body_width/2)
-            self.back_left.phi =  np.arctan2(self.body_length/2, radius - self.body_width/2)
+            newr = -1*radius
+            self.front_right.phi =  np.arctan2(self.body_length/2, newr + self.body_width/2)
+            self.front_left.phi = -np.arctan2(self.body_length/2, newr - self.body_width/2)
+            self.back_right.phi = -np.arctan2(self.body_length/2, newr + self.body_width/2)
+            self.back_left.phi =  np.arctan2(self.body_length/2, newr - self.body_width/2)
 
     
     def _update_leg_step_length(self, step_length, radius):
@@ -392,10 +395,11 @@ class WalkingController():
             self.back_right.step_length = step_length * (radius - self.body_width/2)/radius
             self.back_left.step_length = step_length * (radius + self.body_width/2)/radius
         if(radius < 0):
-            self.front_left.step_length = step_length * (radius - self.body_width/2)/radius
-            self.front_right.step_length = step_length * (radius + self.body_width/2)/radius
-            self.back_left.step_length = step_length * (radius - self.body_width/2)/radius
-            self.back_right.step_length = step_length * (radius + self.body_width/2)/radius
+            newr = radius*-1
+            self.front_left.step_length = step_length * (newr- self.body_width/2)/newr
+            self.front_right.step_length = step_length * (newr + self.body_width/2)/newr
+            self.back_left.step_length = step_length * (newr - self.body_width/2)/newr
+            self.back_right.step_length = step_length *(newr + self.body_width/2)/newr
 
     def drawBezier(self, points, weights, t):
         newpoints = np.zeros(points.shape)
