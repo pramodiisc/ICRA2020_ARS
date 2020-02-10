@@ -572,18 +572,28 @@ class Stoch2Env(gym.Env):
 		self.radius = rad
 	def update_scale(self, scale):
 		self._walkcon.scale = scale
+	def update_comy(self):
+		pos, ori = self.GetBasePosAndOrientation()
+		yaw = quaternionToEuler(ori)
+		self._walkcon.comy = yaw
+
 	def do_trajectory(self ):
 		pass
 
+def quaternionToEuler(q):
+    siny_cosp = 2 * (q[3]* q[2] + q[0] * q[1])
+    cosy_cosp = 1 - 2 * (q[1] * q[1] + q[2] * q[2])
+    yaw = np.arctan2(siny_cosp, cosy_cosp)
+    return yaw
 
 if(__name__ == "__main__"):
 	
 	env = Stoch2Env(render=True, stairs = False,on_rack=False, gait = 'trot')
 	action = [-0.5,1,1,1,1,-0.5,0.6]
-	env.radius = 0.3
+	env.radius = 0.0
 	env._walkcon.scale = 1.0
 	for i in range(200):
 		env.step(action)
-		pos, ori = env.GetBasePosAndOrientation()
-		print(ori)
+		env.update_comy()
+		# print(ori)
 
