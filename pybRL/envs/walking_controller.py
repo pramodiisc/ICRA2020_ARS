@@ -216,16 +216,25 @@ class WalkingController():
         return leg_abduction_angles,leg_motor_angles, np.zeros(2), np.zeros(8) 
     
     def transform_action_to_motor_joint_command_bezier(self, theta, action, radius):
+        leg_sl = action[:4]  #fr fl br bl 
+        leg_sl = leg_sl*0.20
+        leg_phi = action[4:]    #fr fl br bl 
+        leg_phi = leg_phi*PI/2
+
         Legs = namedtuple('legs', 'front_right front_left back_right back_left')
         legs = Legs(front_right = self.front_right, front_left = self.front_left, back_right = self.back_right, back_left = self.back_left)
         step_length = 0.068*2
-        self._update_leg_phi(radius)
-        self._update_leg_step_length(step_length, radius)
+        self._update_leg_phi_val(leg_phi)
+        self._update_leg_step_length_val(leg_sl)
+        # self._update_leg_phi(radius)
+        # self._update_leg_step_length(step_length, radius)
         self.update_leg_theta(theta)
+
         for leg in legs:
             tau = leg.theta/PI
-            weights = (np.array(action)+1)/2
-            weights = weights[:-1]
+            # weights = (np.array(action)+1)/2
+            # weights = weights[:-1]
+            weights = np.ones(6)
             new_pts = self._pts.copy()
             new_pts[0,0] = -leg.step_length/2 
             new_pts[-1,0] = leg.step_length/2 
@@ -234,9 +243,9 @@ class WalkingController():
             # x_offset = np.array([[np.cos(leg.comy),0,np.sin(leg.comy)],[0,1,0],[-np.sin(leg.comy),0, np.cos(leg.comy)]])@np.array([0.01, 0, 0])
             leg.x = leg.x * self.scale 
             leg.z = leg.z * self.scale 
-            leg.x, leg.y, leg.z = np.array([leg.x, leg.y, leg.z]) +\
-                np.array([[np.cos(self.comy),0,-np.sin(self.comy)],[0,1,0],\
-                [np.sin(self.comy),0, np.cos(self.comy)]])@np.array([0.0,0,-0.02])
+            # leg.x, leg.y, leg.z = np.array([leg.x, leg.y, leg.z]) +\
+            #     np.array([[np.cos(self.comy),0,-np.sin(self.comy)],[0,1,0],\
+            #     [np.sin(self.comy),0, np.cos(self.comy)]])@np.array([0.0,0,-0.02])
             # print(np.array([[np.cos(self.comy),0,-np.sin(self.comy)],[0,1,0],\
             #     [np.sin(self.comy),0, np.cos(self.comy)]]))
             leg.motor_knee, leg.motor_hip,leg.motor_abduction = self._inverse_3D(leg.x, leg.y, leg.z, self._leg)
@@ -389,6 +398,13 @@ class WalkingController():
         # print(new_coords)
         motor_knee, motor_hip, _, _ = self._inverse_stoch2(new_coords[0], -new_coords[1], Leg)
         return [motor_knee, motor_hip, theta]
+
+    def _update_leg_phi_val(self, leg_phi):
+        
+        self.front_right.phi =  leg_phi[0]
+        self.front_left.phi = leg_phi[1]
+        self.back_right.phi =    leg_phi[2]
+        self.back_left.phi =  leg_phi[3]
     
     def _update_leg_phi(self, radius):
         if(radius >= 0):
@@ -396,10 +412,12 @@ class WalkingController():
             self.front_right.phi = -np.arctan2(self.body_length/2, radius - self.body_width/2)
             self.back_left.phi = -np.arctan2(self.body_length/2, radius + self.body_width/2)
             self.back_right.phi =  np.arctan2(self.body_length/2, radius - self.body_width/2)
-            print(self.front_right.phi)
-            print(self.front_left.phi)
-            print(self.back_right.phi)
-            print(self.back_left.phi)
+            # print("PHI")
+            # print(self.front_right.phi)
+            # print(self.front_left.phi)
+            # print(self.back_right.phi)
+            # print(self.back_left.phi)
+
 
         if(radius<0):
             newr = -1*radius
@@ -408,7 +426,13 @@ class WalkingController():
             self.back_right.phi = -np.arctan2(self.body_length/2, newr + self.body_width/2)
             self.back_left.phi =  np.arctan2(self.body_length/2, newr - self.body_width/2)
 
-    
+    def _update_leg_step_length_val(self, step_length):
+        self.front_right.step_length = step_length[0]
+        self.front_left.step_length = step_length[1]
+        self.back_right.step_length = step_length[2]
+        self.back_left.step_length = step_length[3]
+
+
     def _update_leg_step_length(self, step_length, radius):
         if(abs(radius) <= 0.12):
             self.front_right.step_length = step_length
@@ -421,10 +445,11 @@ class WalkingController():
             self.front_left.step_length = step_length * (radius + self.body_width/2)/radius
             self.back_right.step_length = step_length * (radius - self.body_width/2)/radius
             self.back_left.step_length = step_length * (radius + self.body_width/2)/radius
-            print(self.front_right.step_length)
-            print(self.front_left.step_length)
-            print(self.back_right.step_length)
-            print(self.back_left.step_length)
+            # print("StepLength")
+            # print(self.front_right.step_length)
+            # print(self.front_left.step_length)
+            # print(self.back_right.step_length)
+            # print(self.back_left.step_length)
 
             return
         if(radius < 0):

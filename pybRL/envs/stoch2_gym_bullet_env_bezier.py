@@ -35,11 +35,11 @@ class Stoch2Env(gym.Env):
 				 on_rack = False,
 				 gait = 'trot',
 				 phase = [0,PI,PI,0],
-				 action_dim = 7,
+				 action_dim = 8,
 				 stairs = True):
 
 		self._is_stairs = stairs
-		self.scale = 0
+		self.scale = 1 #INITIAL ONE FOR TRAINING
 		self._is_render = render
 		self._on_rack = on_rack
 		if self._is_render:
@@ -83,7 +83,7 @@ class Stoch2Env(gym.Env):
 		self.linearV = 0
 		self.angV = 0
 
-		self.radius = 100
+		self.radius = 0.5
 		## Gym env related mandatory variables
 		observation_high = np.array([10.0] * self._obs_dim)
 		observation_low = -observation_high
@@ -172,8 +172,8 @@ class Stoch2Env(gym.Env):
 	
 
 	def do_simulation(self, action, n_frames, callback=None):
-		self.frequency_weight = action[-1]
-		omega = 2 * np.pi * self._frequency * self.frequency_weight #Maybe remove later
+		# self.frequency_weight = action[-1]
+		omega = 2 * np.pi * self._frequency  #Maybe remove later
 		energy_spent_per_step = 0
 		self.action = action
 		cost_reference = 0
@@ -281,12 +281,12 @@ class Stoch2Env(gym.Env):
 		desired_r = round(self.radius,2)
 
 		#print("current_avg_v is {} and desired_v is {}".format(current_v, desired_v))
-		# print("current_radius is {} and desired_radius is {}".format(current_r,desired_r))
+		#print("current_radius is {} and desired_radius is {}".format(current_r,desired_r))
 
 		done, penalty = self._termination(pos, ori)
 		velocity_reward = np.exp(-40*((current_v - desired_v)**2))
-		radius_reward = np.exp(-20*((current_r - desired_r)**2))
-		reward = velocity_reward + radius_reward - 0.01 * energy_spent_per_step
+		radius_reward = np.exp(-60*((current_r - desired_r)**2))
+		reward = radius_reward #- 0.01 * energy_spent_per_step
 		#print("radius_reward reward {}".format(radius_reward))
 
 		return reward
@@ -302,8 +302,9 @@ class Stoch2Env(gym.Env):
 	def GetObservation(self):
 
 		motor_angles = self.GetMotorAngles()
-		obs = np.array(motor_angles)
-		# obs = np.concatenate((motor_angles,[self.linearV],[self.angV])).ravel()
+		#obs = np.array(motor_angles)
+		obs = np.concatenate((motor_angles,[self.radius],[1.0])).ravel()
+		
 		return obs
 
 
@@ -315,7 +316,8 @@ class Stoch2Env(gym.Env):
 		Robot starts in the same position, only it's readings have some error.
 		"""
 		motor_angles = self.GetMotorAngles()
-		obs = np.concatenate((motor_angles,[self.linearV],[self.angV])).ravel()
+		# obs = np.array(motor_angles)
+		obs = np.concatenate((motor_angles,[self.radius],[1.0])).ravel()
 		return obs
 
 	def GetMotorAngles(self):
@@ -587,18 +589,21 @@ def quaternionToEuler(q):
     yaw = np.arctan2(siny_cosp, cosy_cosp)
     return yaw
 
-if(__name__ == "__main__"):
+# if(__name__ == "__main__"):
 	
-	env = Stoch2Env(render=False, stairs = False,on_rack=False, gait = 'trot')
-	action = [-0.5,1,1,1,1,-0.5]
-	env.radius = 0.4
-	env._walkcon.scale = 1.0
-	states = []
-	for i in np.arange(50):
-		cstate, _, _, _ = env.step(action)
-		states.append(cstate)
-		print("done: ",i)
-		# env.update_comy()
-		# print(ori)
-	state = np.array(states)
-	np.save("states.npy", state)
+# 	env = Stoch2Env(render=True, stairs = False,on_rack=False, gait = 'trot')
+# 	#action = [-0.5,1,1,1,1,-0.5]
+# 	sl = np.array([0.095,0.1768,0.095, 0.1768])
+# 	phase = np.array([-0.583870395662115,0.3418051719808889,0.583870395662115,-0.3418051719808889])
+# 	sl = sl/0.20
+# 	phase = phase*2/PI
+# 	action = np.concatenate([sl, phase])
+# 	# env.radius = 0.4
+# 	env._walkcon.scale = 1.0
+# 	states = []
+# 	env.reset()
+# 	for i in np.arange(80):
+# 		cstate, _, _, _ = env.step(action)
+# 		states.append(cstate)
+# 	state = np.array(states)
+# 	np.save("states.npy", state)
