@@ -281,7 +281,7 @@ class Stoch2Env(gym.Env):
 		desired_r = round(self.radius,2)
 
 		#print("current_avg_v is {} and desired_v is {}".format(current_v, desired_v))
-		#print("current_radius is {} and desired_radius is {}".format(current_r,desired_r))
+		print("current_radius is {} and desired_radius is {}".format(current_r,desired_r))
 
 		done, penalty = self._termination(pos, ori)
 		velocity_reward = np.exp(-40*((current_v - desired_v)**2))
@@ -589,21 +589,21 @@ def quaternionToEuler(q):
     yaw = np.arctan2(siny_cosp, cosy_cosp)
     return yaw
 
-# if(__name__ == "__main__"):
+if(__name__ == "__main__"):
 	
-# 	env = Stoch2Env(render=True, stairs = False,on_rack=False, gait = 'trot')
-# 	#action = [-0.5,1,1,1,1,-0.5]
-# 	sl = np.array([0.095,0.1768,0.095, 0.1768])
-# 	phase = np.array([-0.583870395662115,0.3418051719808889,0.583870395662115,-0.3418051719808889])
-# 	sl = sl/0.20
-# 	phase = phase*2/PI
-# 	action = np.concatenate([sl, phase])
-# 	# env.radius = 0.4
-# 	env._walkcon.scale = 1.0
-# 	states = []
-# 	env.reset()
-# 	for i in np.arange(80):
-# 		cstate, _, _, _ = env.step(action)
-# 		states.append(cstate)
-# 	state = np.array(states)
-# 	np.save("states.npy", state)
+	env = Stoch2Env(render=True, stairs = False,on_rack=False, gait = 'trot')
+	#action = [-0.5,1,1,1,1,-0.5]
+	sl = np.array([0.095,0.1768,0.095, 0.1768])
+	phase = np.array([-0.583870395662115,0.3418051719808889,0.583870395662115,-0.3418051719808889])
+	sl = sl/0.20
+	phase = phase*2/PI
+	action = np.concatenate([sl, phase])
+	# env.radius = 0.4
+	env._walkcon.scale = 1.0
+	states = []
+	env.reset()
+	for i in np.arange(80):
+		cstate, _, _, _ = env.step(action)
+		states.append(cstate)
+	state = np.array(states)
+	np.save("states.npy", state)

@@ -1,0 +1,7 @@
+learning_rate: 0.01
+noise: 0.01
+env_name: Stoch2-v0episode_length: 20.0
+direction ratio: 2.0
+Normal initialization: 0
+Gait: trot
+We increased learning rate

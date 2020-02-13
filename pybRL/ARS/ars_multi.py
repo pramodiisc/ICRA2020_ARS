@@ -7,7 +7,6 @@ import os
 import numpy as np
 import gym
 from gym import wrappers
-import pybullet_envs
 import time
 import multiprocessing as mp
 from multiprocessing import Process, Pipe
@@ -60,7 +59,6 @@ class HyperParameters():
         res_str = res_str + 'direction ratio: '+ str(self.nb_directions/ self.nb_best_directions) + '\n'
         res_str = res_str + 'Normal initialization: '+ str(self.normal) + '\n'
         res_str = res_str + 'Gait: '+ str(self.gait) + '\n'
-        res_str = res_str + 'Spline polynomial degree: '+ str(self.action_dim) + '\n'
         res_str = res_str + self.msg + '\n'
         fileobj = open(path, 'w')
         fileobj.write(res_str)
@@ -331,6 +329,8 @@ if __name__ == "__main__":
   parser.add_argument('--distance_weight', help='The weight to be given to distance moved by robot', type=float, default=1.0)
   parser.add_argument('--stairs', help='add stairs to the bezier environment', type=int, default=0)
   parser.add_argument('--action_dim', help='degree of the spline polynomial used in the training', type=int, default=20)
+  parser.add_argument('--directions', help='divising factor of total directions to use', type=int, default=2)
+
 
   args = parser.parse_args()
   walk = [0, PI, PI/2, 3*PI/2]
@@ -366,7 +366,7 @@ if __name__ == "__main__":
   hp.forward_reward_cap = args.forward_reward_cap
   print(env.observation_space.sample())
   hp.nb_directions = int(env.observation_space.sample().shape[0] * env.action_space.sample().shape[0])
-  hp.nb_best_directions = int(hp.nb_directions / 2)
+  hp.nb_best_directions = int(hp.nb_directions / args.directions)
   hp.normal = args.normal
   hp.gait = args.gait
   hp.action_dim = args.action_dim

@@ -1,0 +1,1 @@
+python ars_multi.py --action_dim 8 --lr 0.01 --noise 0.01 --normal 0 --directions 2 --logdir 12Feb8 --msg "We increased learning rate" --env Stoch2-v0 --policy 0.5_radius_policy.npy --episode_length 20
