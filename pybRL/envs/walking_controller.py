@@ -224,10 +224,10 @@ class WalkingController():
         Legs = namedtuple('legs', 'front_right front_left back_right back_left')
         legs = Legs(front_right = self.front_right, front_left = self.front_left, back_right = self.back_right, back_left = self.back_left)
         step_length = 0.068*2
-        self._update_leg_phi_val(leg_phi)
-        self._update_leg_step_length_val(leg_sl)
-        # self._update_leg_phi(radius)
-        # self._update_leg_step_length(step_length, radius)
+        # self._update_leg_phi_val(leg_phi)
+        # self._update_leg_step_length_val(leg_sl)
+        self._update_leg_phi(radius)
+        self._update_leg_step_length(step_length, radius)
         self.update_leg_theta(theta)
 
         for leg in legs:

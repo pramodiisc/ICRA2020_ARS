@@ -173,7 +173,7 @@ class Stoch2Env(gym.Env):
 
 	def do_simulation(self, action, n_frames, callback=None):
 		# self.frequency_weight = action[-1]
-		omega = 2 * np.pi * self._frequency  #Maybe remove later
+		omega = 0.005  #Maybe remove later
 		energy_spent_per_step = 0
 		self.action = action
 		cost_reference = 0
@@ -184,7 +184,7 @@ class Stoch2Env(gym.Env):
 		sum_W = 0
 		while(np.abs(omega*self.dt*counter) <= np.pi * self._update_action_every):
 			abd_m_angle_cmd, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.transform_action_to_motor_joint_command_bezier(self._theta,action, self.radius)
-			self._theta = constrain_theta(omega * self.dt + self._theta)
+			self._theta = constrain_theta(self.dt + self._theta)
 			# print(self._theta/PI)
 			qpos_act = np.array(self.GetMotorAngles())
 			m_angle_cmd_ext = np.array(leg_m_angle_cmd + abd_m_angle_cmd)
@@ -607,12 +607,14 @@ if(__name__ == "__main__"):
 	sl = sl/0.20
 	phase = phase*2/PI
 	action = np.concatenate([sl, phase])
-	# env.radius = 0.4
+	env.radius = 0.7
 	env._walkcon.scale = 1.0
 	states = []
+	ang_data =[]
 	env.reset()
-	for i in np.arange(80):
-		cstate, _, _, _ = env.step(action)
-		states.append(cstate)
-	state = np.array(states)
-	np.save("states.npy", state)
+	for i in np.arange(20):
+		cstate, _, _, current_ang = env.step(action)
+		ang_data.append(current_ang)
+		#print(env._theta)
+	ang_data = np.array(ang_data)
+	np.save("raw_angle_data_0.7R.npy", ang_data)

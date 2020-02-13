@@ -20,7 +20,7 @@ custom_phase = [0, PI, PI+0.1 , 0.1]
 
 env = e.Stoch2Env(render = True, phase = trot, stairs = False, on_rack=False, gait = "trot")
 state = env.reset()
-policy = np.load("/home/sashank/ICRA2020_ARS/pybRL/ARS/12Feb8/iterations/best_policy.npy")
+policy = np.load("/home/abhik/ID/ICRA2020_ARS/pybRL/ARS/12Feb/12Feb3_worked/iterations/best_policy.npy")
 #policy = np.load("0.5_radius_policy.npy")
 steps = 0
 t_r = 0
