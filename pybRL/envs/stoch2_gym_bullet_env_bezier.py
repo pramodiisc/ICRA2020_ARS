@@ -206,8 +206,8 @@ class Stoch2Env(gym.Env):
 
 		self.avg_vel_per_step = sum_V/counter
 		self.avg_omega_per_step = sum_W/counter
-
 		self._n_steps += 1
+		self.hack_smoothen_theta()
 		return energy_spent_per_step, cost_reference, angle_data
 
 	def render(self, mode="rgb_array", close=False):
@@ -583,11 +583,20 @@ class Stoch2Env(gym.Env):
 	def do_trajectory(self ):
 		pass
 
+	def hack_smoothen_theta(self):
+		if(abs(self._theta - np.pi*2)<= 0.01):
+			self._theta = 0
+		if(abs(self._theta - 0)<= 0.01):
+			self._theta = 0
+		if(abs(self._theta - np.pi)<= 0.01):
+			self._theta = np.pi
 def quaternionToEuler(q):
     siny_cosp = 2 * (q[3]* q[2] + q[0] * q[1])
     cosy_cosp = 1 - 2 * (q[1] * q[1] + q[2] * q[2])
     yaw = np.arctan2(siny_cosp, cosy_cosp)
     return yaw
+
+
 
 if(__name__ == "__main__"):
 	
