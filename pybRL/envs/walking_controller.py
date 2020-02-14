@@ -18,7 +18,7 @@ import numpy as np
 from scipy.linalg import solve
 import matplotlib.pyplot as plt
 PI = np.pi
-
+no_of_points=100
 @dataclass
 class leg_data:
     name : str
@@ -146,9 +146,9 @@ class WalkingController():
     def update_leg_theta(self,theta):
         """ Depending on the gait, the theta for every leg is calculated"""
         def constrain_theta(theta):
-            theta = np.fmod(theta, 2*PI)
+            theta = np.fmod(theta, 2*no_of_points)
             if(theta < 0):
-                theta = theta + 2*PI
+                theta = theta + 2*no_of_points
             return theta
         self.front_right.theta = constrain_theta(theta+self._phase.front_right)
         self.front_left.theta = constrain_theta(theta+self._phase.front_left)
@@ -231,7 +231,7 @@ class WalkingController():
         self.update_leg_theta(theta)
 
         for leg in legs:
-            tau = leg.theta/PI
+            tau = leg.theta/no_of_points
             # weights = (np.array(action)+1)/2
             # weights = weights[:-1]
             weights = np.ones(6)
