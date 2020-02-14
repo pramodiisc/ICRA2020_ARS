@@ -23,18 +23,19 @@ KNEE_CONSTRAINT_POINT_LEFT = [0.0,0.0,-0.077] #knee
 RENDER_HEIGHT = 720 #360
 RENDER_WIDTH = 960 #480
 PI = np.pi
+no_of_points = 100
 def constrain_theta(theta):
-			theta = np.fmod(theta, 2*PI)
-			if(theta < 0):
-				theta = theta + 2*PI
-			return theta
+	theta = np.fmod(theta, 2*no_of_points)
+	if(theta < 0):
+		theta = theta + 2*no_of_points
+	return theta
 class Stoch2Env(gym.Env):
 
 	def __init__(self,
 				 render = False,
 				 on_rack = False,
 				 gait = 'trot',
-				 phase = [0,PI,PI,0],
+				 phase = [0,no_of_points,no_of_points,0],
 				 action_dim = 8,
 				 stairs = True):
 
@@ -50,14 +51,14 @@ class Stoch2Env(gym.Env):
 		self._theta = 0
 		self._theta0 = 0
 		self._update_action_every = 1.  # update is every 50% of the step i.e., theta goes from 0 to pi/2
-		self._frequency = 2.8 #change back to 1
+		self._frequency = 2.5 #change back to 1
 		# self._frequency = 2.8 #change back to 1
 		self.frequency_weight = 1
 
 		self._kp = 20
 		self._kd = 2
-		self.dt = 0.001
-		self._frame_skip = 5
+		self.dt = 0.005 # LET ME CHANGE, was 0.001
+		self._frame_skip = 25 # Working ratio is 5* self._dt
 		self._n_steps = 0
 		self._action_dim = action_dim
 
@@ -158,7 +159,7 @@ class Stoch2Env(gym.Env):
 	def step(self, action, callback=None):
 		action = np.clip(action, -1, 1)
 		energy_spent_per_step, cost_reference, ang_data = self.do_simulation(action, n_frames = self._frame_skip, callback=callback)
-		ob = self.GetObservation()
+		ob = ang_data[-1]
 		reward = self._get_reward(action,energy_spent_per_step,cost_reference)
 		return ob, reward,False, ang_data
 
@@ -173,7 +174,7 @@ class Stoch2Env(gym.Env):
 
 	def do_simulation(self, action, n_frames, callback=None):
 		# self.frequency_weight = action[-1]
-		omega = 0.005  #Maybe remove later
+		omega = 2 * no_of_points * self._frequency  #Maybe remove later
 		energy_spent_per_step = 0
 		self.action = action
 		cost_reference = 0
@@ -182,10 +183,13 @@ class Stoch2Env(gym.Env):
 		counter = 0
 		sum_V = 0
 		sum_W = 0
-		while(np.abs(omega*self.dt*counter) <= np.pi * self._update_action_every):
+		current_theta = self._theta
+		while(np.abs(self._theta - current_theta) <= no_of_points * self._update_action_every):
+			current_angle_data = np.concatenate(([self._theta],self.GetMotorAngles()))
+			angle_data.append(current_angle_data)
 			abd_m_angle_cmd, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.transform_action_to_motor_joint_command_bezier(self._theta,action, self.radius)
-			self._theta = constrain_theta(self.dt + self._theta)
-			# print(self._theta/PI)
+			self._theta = constrain_theta(omega * self.dt + self._theta)
+			# print(self._theta)
 			qpos_act = np.array(self.GetMotorAngles())
 			m_angle_cmd_ext = np.array(leg_m_angle_cmd + abd_m_angle_cmd)
 			m_vel_cmd_ext = np.zeros(12)
@@ -194,8 +198,6 @@ class Stoch2Env(gym.Env):
 			sum_V = sum_V + current_v
 			sum_W = sum_W + current_w
 			for _ in range(n_frames):
-				current_angle_data = np.concatenate(([ii],self.GetMotorAngles()))
-				angle_data.append(current_angle_data)
 				ii = ii + 1
 				applied_motor_torque = self._apply_pd_control(m_angle_cmd_ext, m_vel_cmd_ext)
 				self._pybullet_client.stepSimulation()
@@ -523,7 +525,7 @@ class Stoch2Env(gym.Env):
 		xyvel = np.zeros((4,100))
 
 		for i in range(100):
-			theta = 2*np.pi/100*i
+			theta = 2*no_of_points/100*i
 			rt[:,i], rtvel[:,i] = self._walkcon.transform_action_to_rt(theta, action)
 
 			r_ac1 = rt[0,i]
@@ -543,10 +545,10 @@ class Stoch2Env(gym.Env):
 		"""
 		Provides an interface for testing, you can give external position/ velocity commands and see how the robot behaves
 		"""
-		omega = 2 * np.pi * self._frequency
+		omega = 2 * no_of_points * self._frequency
 		angle_data = []
 		counter = 0
-		while(np.abs(omega*self.dt*counter) <= np.pi * self._update_action_every):
+		while(np.abs(omega*self.dt*counter) <= no_of_points * self._update_action_every):
 			self._theta = constrain_theta(omega * self.dt + self._theta)
 			for _ in range(self._frame_skip):
 				applied_motor_torque = self._apply_pd_control(m_angle_cmd_ext, m_vel_cmd_ext)
@@ -559,7 +561,7 @@ class Stoch2Env(gym.Env):
 		centered at 0 (maybe). Provide trajectory for fl, fr, bl, br in that order
 		"""
 		self._theta = 0
-		omega = 2 * np.pi * self._frequency
+		omega = 2 * no_of_points * self._frequency
 		while True:
 			abd_m_angle_cmd, leg_m_angle_cmd, d_spine_des, leg_m_vel_cmd= self._walkcon.run_traj2d(self._theta,
 			[fl_traj,fl_phi], [fr_traj, fr_phi], [bl_traj, bl_phi], [br_traj, br_phi])
@@ -612,9 +614,13 @@ if(__name__ == "__main__"):
 	states = []
 	ang_data =[]
 	env.reset()
-	for i in np.arange(20):
-		cstate, _, _, current_ang = env.step(action)
-		ang_data.append(current_ang)
-		#print(env._theta)
-	ang_data = np.array(ang_data)
-	np.save("raw_angle_data_0.7R.npy", ang_data)
+	angles = []
+	for i in np.arange(3):
+		cstate, _, _, angle = env.step(action)
+		angles.append(angle)
+		states.append(cstate)
+	angles = np.concatenate(angles)
+	print(angles)
+	state = np.array(states)
+	print(states)
+	# np.save("states.npy", state)
